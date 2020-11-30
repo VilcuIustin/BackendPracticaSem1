@@ -17,6 +17,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.Cors;
 
+
 namespace Backend
 {
     public class Startup
@@ -46,18 +47,12 @@ namespace Backend
                 };
             });
             services.AddCors();
-            /* services.AddCors(options =>
-             {
-                 options.AddPolicy("CorsPolicy",
-                     builder => builder.AllowAnyOrigin()
-                     .AllowAnyMethod()
-                     .AllowAnyHeader()
-                    );
-             });
-            */
             services.AddMvc();
             services.AddDbContext<BackendContext>(options => options.UseSqlServer("Server=localhost;Database=Backend;Trusted_Connection=True;"));
             services.AddControllersWithViews();
+            services.AddControllers().AddNewtonsoftJson(options =>
+            options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore
+            );
             services.AddControllers();
         }
 

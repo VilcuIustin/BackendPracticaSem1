@@ -4,14 +4,16 @@ using Backend.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Backend.Migrations
 {
     [DbContext(typeof(BackendContext))]
-    partial class BackendContextModelSnapshot : ModelSnapshot
+    [Migration("20201130081330_mig2")]
+    partial class mig2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -90,16 +92,11 @@ namespace Backend.Migrations
                     b.Property<long?>("UserId")
                         .HasColumnType("bigint");
 
-                    b.Property<long?>("UserId1")
-                        .HasColumnType("bigint");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ImgId");
 
                     b.HasIndex("UserId");
-
-                    b.HasIndex("UserId1");
 
                     b.ToTable("Posts");
                 });
@@ -129,17 +126,7 @@ namespace Backend.Migrations
                     b.Property<string>("Role")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<long?>("UserId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("UserId1")
-                        .HasColumnType("bigint");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId1");
 
                     b.ToTable("Users");
                 });
@@ -164,21 +151,6 @@ namespace Backend.Migrations
                     b.HasOne("Backend.Entities.Models.User", null)
                         .WithMany("MyPosts")
                         .HasForeignKey("UserId");
-
-                    b.HasOne("Backend.Entities.Models.User", null)
-                        .WithMany("PostLiked")
-                        .HasForeignKey("UserId1");
-                });
-
-            modelBuilder.Entity("Backend.Entities.Models.User", b =>
-                {
-                    b.HasOne("Backend.Entities.Models.User", null)
-                        .WithMany("Followers")
-                        .HasForeignKey("UserId");
-
-                    b.HasOne("Backend.Entities.Models.User", null)
-                        .WithMany("Following")
-                        .HasForeignKey("UserId1");
                 });
 #pragma warning restore 612, 618
         }

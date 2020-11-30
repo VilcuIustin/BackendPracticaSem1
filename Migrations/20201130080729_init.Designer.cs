@@ -10,23 +10,44 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Backend.Migrations
 {
     [DbContext(typeof(BackendContext))]
-    [Migration("20201126184106_migtest")]
-    partial class migtest
+    [Migration("20201130080729_init")]
+    partial class init
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .UseIdentityColumns()
+                .HasAnnotation("ProductVersion", "3.1.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
-                .HasAnnotation("ProductVersion", "5.0.0");
+                .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+            modelBuilder.Entity("Backend.Entities.Models.Comment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<string>("Message")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("Photo")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<int>("User")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Comments");
+                });
 
             modelBuilder.Entity("Backend.Entities.Models.Image", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .UseIdentityColumn();
+                        .HasColumnType("bigint")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
                     b.Property<byte[]>("Photo")
                         .HasColumnType("varbinary(max)");
@@ -38,16 +59,19 @@ namespace Backend.Migrations
 
             modelBuilder.Entity("Backend.Entities.Models.Post", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .UseIdentityColumn();
+                        .HasColumnType("bigint")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<DateTime>("DTPost")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("IdUser")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ImgId")
-                        .HasColumnType("int");
+                    b.Property<long?>("ImgId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("NrLikes")
                         .HasColumnType("int");
@@ -55,8 +79,8 @@ namespace Backend.Migrations
                     b.Property<string>("Text")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int");
+                    b.Property<long?>("UserId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -69,10 +93,10 @@ namespace Backend.Migrations
 
             modelBuilder.Entity("Backend.Entities.Models.User", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .UseIdentityColumn();
+                        .HasColumnType("bigint")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
@@ -92,12 +116,7 @@ namespace Backend.Migrations
                     b.Property<string>("Role")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("Users");
                 });
@@ -111,22 +130,6 @@ namespace Backend.Migrations
                     b.HasOne("Backend.Entities.Models.User", null)
                         .WithMany("MyPosts")
                         .HasForeignKey("UserId");
-
-                    b.Navigation("Img");
-                });
-
-            modelBuilder.Entity("Backend.Entities.Models.User", b =>
-                {
-                    b.HasOne("Backend.Entities.Models.User", null)
-                        .WithMany("Fallow")
-                        .HasForeignKey("UserId");
-                });
-
-            modelBuilder.Entity("Backend.Entities.Models.User", b =>
-                {
-                    b.Navigation("Fallow");
-
-                    b.Navigation("MyPosts");
                 });
 #pragma warning restore 612, 618
         }
