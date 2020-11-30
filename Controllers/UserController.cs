@@ -24,11 +24,17 @@ namespace Backend.Controllers
         }
 
         [HttpGet("getuser/{id}")]
-        public async Task<ActionResult<List<Post>>> GetUserById([FromRoute] int id ) 
+        public async Task<ActionResult<User>> GetUserById([FromRoute] long id ) 
         {
             try
             {
-                return _db.Users.Where(user => id == user.Id).Single().MyPosts.ToList();
+                return _db.Users
+                    .Include(user => user.MyPosts)
+                    .Include(user => user.Followers)
+                    .Include(user => user.Following)
+                    .Where(user => id == user.Id)
+                    .Single();
+              
             }
             catch (Exception)
             {
@@ -42,22 +48,62 @@ namespace Backend.Controllers
             if (currentUser.HasClaim(claims=> claims.Type=="Role"))
             {
                 if((currentUser.Claims.FirstOrDefault(c => c.Type == "Role").Value)=="Admin")
-                    return _db.Users.ToList();
+                    return _db.Users
+                        .Include(user => user.MyPosts).ToList();
             }
             return new JsonResult(new { status = "false" });
         }
 
+        #region Fallow
 
-
-        [HttpGet("getfallow")]
-        public async Task<ActionResult<User>> GetFallow([FromBody] PostPayload postPayload)
+        [HttpGet("getfollowers/{id}")]
+        public async Task<ActionResult<List<User>>> GetFallowers([FromRoute] long id)
         {
+            return _db.Users.Include(user => user.Followers).Where(user => user.Id == id).Single().Followers.ToList();
 
-            return Ok();        // de implementat
+        }
+        [HttpGet("getfollowing/{id}")]
+        public async Task<ActionResult<List<User>>> GetFallowing([FromRoute] long id)
+        {
+            return _db.Users.Include(user => user.Following).Where(user => user.Id == id).Single().Followers.ToList();
 
         }
 
 
+
+
+        [HttpPost("fallow/{id}")]
+        public async Task<ActionResult> Fallow([FromRoute] long id)
+        {
+            var currentUser = HttpContext.User;
+            if (currentUser.HasClaim(claims => claims.Type == "Id"))
+            {
+                long idUser;
+                bool re = long.TryParse((currentUser.Claims.FirstOrDefault(c => c.Type == "Id").Value),out idUser);
+                if (!re)
+                    return BadRequest("Can't parse id");
+                var userForFollowing = _db.Users.Include(user => user.Following).Where(user => user.Id == idUser).Single();
+                try
+                {
+                    var userForFollow = _db.Users.Include(user => user.Followers).Where(user => user.Id == id).Single();
+                    userForFollowing.Following.Add(userForFollow);
+                    userForFollow.Followers.Add(userForFollowing);
+                    await _db.SaveChangesAsync();
+                }
+                catch (InvalidOperationException)
+                {
+                    return new JsonResult(new { status = "false", message = "user not found" });
+                }
+                
+                return Ok();
+            }
+
+            return BadRequest("Id not found");
+        }
+
+        #endregion
+
+        #region Post
 
 
         [HttpPost("post")]
@@ -72,7 +118,7 @@ namespace Backend.Controllers
             {
                 try
                 {
-                    var user = _db.Users.Where(user => user.Id == postPayload.UserId).Single();
+                    var user = _db.Users.Include(user=> user.MyPosts).Where(user => user.Id == postPayload.UserId).Single();
                     var usertoUpdate = user;
                     Image photoToAdd = null;
                     if (postPayload.photo.Photo != null)
@@ -89,9 +135,8 @@ namespace Backend.Controllers
                         Text = postPayload.Text,
                         Img = photoToAdd
                     };
-                    // await TryUpdateModelAsync<User>(user, "", a => user.MyPosts.Add());
-                    if (user.MyPosts == null)
-                        user.MyPosts = new List<Post>();
+                    
+                    
                     user.MyPosts.Add(post);
                     _db.Entry<User>(usertoUpdate).CurrentValues.SetValues(user);
 
@@ -105,9 +150,6 @@ namespace Backend.Controllers
                 }        
             }
         }
-
-       // [HttpGet("getpost")]
-       // public async Task<ActionResult> GetPost([FromBody] )
 
         [HttpPut("editpost")]
         public async Task<ActionResult<Post>> EditPost([FromBody] PostPayload postPayload)
@@ -149,19 +191,10 @@ namespace Backend.Controllers
                      return new JsonResult(new { stauts = "false", message = "you are not the post creator or an admin" });
                 }
             }
-            return Ok();
+            
         }
 
-
-
-
-
-
-
-
-
-
-
+        #endregion
 
     }
 }
