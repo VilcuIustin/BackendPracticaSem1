@@ -1,10 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Backend.Entities.Models
 {
@@ -18,13 +13,14 @@ namespace Backend.Entities.Models
         public string PasswordHash { get; set; }
         public string Gender { get; set; }
         public string Role { get; set; }
-        public virtual ICollection<User> Followers { get; set; }
-        public virtual ICollection<User> Following { get; set; }
-        public virtual ICollection<Post> PostLiked { get; set; }
-        public virtual ICollection<Post> MyPosts { get; set; }
+        public ImgURL ProfilePic { get; set; }
+        public virtual ICollection<UserId> Followers { get; set; }
+        public virtual ICollection<UserId> Following { get; set; }
+        public virtual ICollection<PostId> PostLiked { get; set; }
+        public virtual ICollection<PostId> MyPosts { get; set; }
 
 
-   
+
 
 
     }

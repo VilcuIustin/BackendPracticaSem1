@@ -4,14 +4,16 @@ using Backend.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Backend.Migrations
 {
     [DbContext(typeof(BackendContext))]
-    partial class BackendContextModelSnapshot : ModelSnapshot
+    [Migration("20201219094913_newImg")]
+    partial class newImg
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -134,33 +136,21 @@ namespace Backend.Migrations
                     b.Property<string>("Role")
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProfilePicId");
-
-                    b.ToTable("Users");
-                });
-
-            modelBuilder.Entity("Backend.Entities.Models.UserId", b =>
-                {
-                    b.Property<long>("user")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
                     b.Property<long?>("UserId")
                         .HasColumnType("bigint");
 
                     b.Property<long?>("UserId1")
                         .HasColumnType("bigint");
 
-                    b.HasKey("user");
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfilePicId");
 
                     b.HasIndex("UserId");
 
                     b.HasIndex("UserId1");
 
-                    b.ToTable("UserId");
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("Backend.Entities.Models.Comment", b =>
@@ -201,10 +191,7 @@ namespace Backend.Migrations
                     b.HasOne("Backend.Entities.Models.ImgURL", "ProfilePic")
                         .WithMany()
                         .HasForeignKey("ProfilePicId");
-                });
 
-            modelBuilder.Entity("Backend.Entities.Models.UserId", b =>
-                {
                     b.HasOne("Backend.Entities.Models.User", null)
                         .WithMany("Followers")
                         .HasForeignKey("UserId");

@@ -1,16 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Backend.Entities.Models;
+﻿using Microsoft.AspNetCore.Http;
+using System.ComponentModel.DataAnnotations;
 
 namespace Backend.Payloads
 {
     public class PostPayload
     {
+        [Required]
         public int UserId { get; set; }
+        [Required]
         public int Id { get; set; }
         public string? Text { get; set; }
-        public Image? photo { get; set; }
+        public IFormFileCollection? Photos { get; set; }
     }
 }
