@@ -2,24 +2,24 @@
 
 namespace Backend.Migrations
 {
-    public partial class mig4 : Migration
+    public partial class mig2 : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<long>(
-                name: "UserId1",
-                table: "Users",
+                name: "UserId2",
+                table: "UserId",
                 nullable: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Users_UserId1",
-                table: "Users",
-                column: "UserId1");
+                name: "IX_UserId_UserId2",
+                table: "UserId",
+                column: "UserId2");
 
             migrationBuilder.AddForeignKey(
-                name: "FK_Users_Users_UserId1",
-                table: "Users",
-                column: "UserId1",
+                name: "FK_UserId_Users_UserId2",
+                table: "UserId",
+                column: "UserId2",
                 principalTable: "Users",
                 principalColumn: "Id",
                 onDelete: ReferentialAction.Restrict);
@@ -28,16 +28,16 @@ namespace Backend.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
-                name: "FK_Users_Users_UserId1",
-                table: "Users");
+                name: "FK_UserId_Users_UserId2",
+                table: "UserId");
 
             migrationBuilder.DropIndex(
-                name: "IX_Users_UserId1",
-                table: "Users");
+                name: "IX_UserId_UserId2",
+                table: "UserId");
 
             migrationBuilder.DropColumn(
-                name: "UserId1",
-                table: "Users");
+                name: "UserId2",
+                table: "UserId");
         }
     }
 }

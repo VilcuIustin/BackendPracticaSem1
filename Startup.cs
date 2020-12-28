@@ -5,9 +5,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using System.IO;
 using System.Text;
+
 
 
 namespace Backend
@@ -38,6 +41,7 @@ namespace Backend
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Jwt:Key"]))
                 };
             });
+            services.AddSignalR();
             services.AddCors();
             services.AddMvc();
             services.AddDbContext<BackendContext>(options => options.UseSqlServer("Server=localhost;Database=Backend;Trusted_Connection=True;"));
@@ -62,9 +66,16 @@ namespace Backend
 
             app.UseHttpsRedirection();
 
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new PhysicalFileProvider(
+            Path.Combine(env.ContentRootPath, "Resources", "Images")),
+                RequestPath = "/images"
+            });
+
             app.UseRouting();
 
-            // app.UseCors("CorsPolicy");
+            //app.UseCors("CorsPolicy");
             app.UseCors(x => x.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 
             app.UseAuthorization();

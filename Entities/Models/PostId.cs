@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Backend.Entities.Models
 {
@@ -11,9 +7,10 @@ namespace Backend.Entities.Models
     {
         [Key]
         public long Id { get; set; }
+        [ForeignKey("postId")]
         public long postId { get; set; }
-        [ForeignKey("user")]
+        [ForeignKey("Iduser")]
         public long userId { get; set; }
-    
+
     }
 }

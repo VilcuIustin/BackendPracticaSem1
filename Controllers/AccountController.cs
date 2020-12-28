@@ -38,7 +38,7 @@ namespace Backend.Controllers
             {
                 MailAddress m = new MailAddress(registerPayload.Email);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
 
                 return new JsonResult(new { status = "false", message = "email format " + registerPayload.Email });

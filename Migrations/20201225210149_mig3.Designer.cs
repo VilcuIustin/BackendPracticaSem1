@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Backend.Migrations
 {
     [DbContext(typeof(BackendContext))]
-    [Migration("20201130081403_mig3")]
+    [Migration("20201225210149_mig3")]
     partial class mig3
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -31,11 +31,11 @@ namespace Backend.Migrations
                     b.Property<long?>("CommentId")
                         .HasColumnType("bigint");
 
+                    b.Property<long?>("ImageId")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Message")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<byte[]>("Photo")
-                        .HasColumnType("varbinary(max)");
 
                     b.Property<long?>("PostId")
                         .HasColumnType("bigint");
@@ -47,24 +47,31 @@ namespace Backend.Migrations
 
                     b.HasIndex("CommentId");
 
+                    b.HasIndex("ImageId");
+
                     b.HasIndex("PostId");
 
                     b.ToTable("Comments");
                 });
 
-            modelBuilder.Entity("Backend.Entities.Models.Image", b =>
+            modelBuilder.Entity("Backend.Entities.Models.ImgURL", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
-                    b.Property<byte[]>("Photo")
-                        .HasColumnType("varbinary(max)");
+                    b.Property<string>("ImgUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("PostId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Images");
+                    b.HasIndex("PostId");
+
+                    b.ToTable("ImgURL");
                 });
 
             modelBuilder.Entity("Backend.Entities.Models.Post", b =>
@@ -80,30 +87,43 @@ namespace Backend.Migrations
                     b.Property<int>("IdUser")
                         .HasColumnType("int");
 
-                    b.Property<long?>("ImgId")
-                        .HasColumnType("bigint");
-
                     b.Property<int>("NrLikes")
                         .HasColumnType("int");
 
                     b.Property<string>("Text")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<long?>("UserId")
+                    b.HasKey("Id");
+
+                    b.ToTable("Posts");
+                });
+
+            modelBuilder.Entity("Backend.Entities.Models.PostId", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<long?>("MyPost")
                         .HasColumnType("bigint");
 
-                    b.Property<long?>("UserId1")
+                    b.Property<long?>("idPost")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("postId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("userId")
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ImgId");
+                    b.HasIndex("MyPost");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("idPost");
 
-                    b.HasIndex("UserId1");
-
-                    b.ToTable("Posts");
+                    b.ToTable("PostId");
                 });
 
             modelBuilder.Entity("Backend.Entities.Models.User", b =>
@@ -128,17 +148,51 @@ namespace Backend.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<long?>("ProfilePicId")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Role")
                         .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfilePicId");
+
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Backend.Entities.Models.UserId", b =>
+                {
+                    b.Property<long>("id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
                     b.Property<long?>("UserId")
                         .HasColumnType("bigint");
 
-                    b.HasKey("Id");
+                    b.Property<long?>("UserId1")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("dateFollowing")
+                        .HasColumnType("int");
+
+                    b.Property<long>("followedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("following")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("status")
+                        .HasColumnType("bit");
+
+                    b.HasKey("id");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Users");
+                    b.HasIndex("UserId1");
+
+                    b.ToTable("UserId");
                 });
 
             modelBuilder.Entity("Backend.Entities.Models.Comment", b =>
@@ -147,31 +201,49 @@ namespace Backend.Migrations
                         .WithMany("SubComment")
                         .HasForeignKey("CommentId");
 
+                    b.HasOne("Backend.Entities.Models.ImgURL", "Image")
+                        .WithMany()
+                        .HasForeignKey("ImageId");
+
                     b.HasOne("Backend.Entities.Models.Post", null)
                         .WithMany("PostComment")
                         .HasForeignKey("PostId");
                 });
 
-            modelBuilder.Entity("Backend.Entities.Models.Post", b =>
+            modelBuilder.Entity("Backend.Entities.Models.ImgURL", b =>
                 {
-                    b.HasOne("Backend.Entities.Models.Image", "Img")
-                        .WithMany()
-                        .HasForeignKey("ImgId");
+                    b.HasOne("Backend.Entities.Models.Post", null)
+                        .WithMany("Images")
+                        .HasForeignKey("PostId");
+                });
 
+            modelBuilder.Entity("Backend.Entities.Models.PostId", b =>
+                {
                     b.HasOne("Backend.Entities.Models.User", null)
                         .WithMany("MyPosts")
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("MyPost");
 
                     b.HasOne("Backend.Entities.Models.User", null)
                         .WithMany("PostLiked")
-                        .HasForeignKey("UserId1");
+                        .HasForeignKey("idPost");
                 });
 
             modelBuilder.Entity("Backend.Entities.Models.User", b =>
                 {
+                    b.HasOne("Backend.Entities.Models.ImgURL", "ProfilePic")
+                        .WithMany()
+                        .HasForeignKey("ProfilePicId");
+                });
+
+            modelBuilder.Entity("Backend.Entities.Models.UserId", b =>
+                {
                     b.HasOne("Backend.Entities.Models.User", null)
-                        .WithMany("Fallow")
+                        .WithMany("Followers")
                         .HasForeignKey("UserId");
+
+                    b.HasOne("Backend.Entities.Models.User", null)
+                        .WithMany("Following")
+                        .HasForeignKey("UserId1");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,11 +1,13 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Backend.Entities.Models
 {
     public class User
     {
         [Key]
+
         public long Id { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
@@ -16,7 +18,9 @@ namespace Backend.Entities.Models
         public ImgURL ProfilePic { get; set; }
         public virtual ICollection<UserId> Followers { get; set; }
         public virtual ICollection<UserId> Following { get; set; }
+        [ForeignKey("idPost")]
         public virtual ICollection<PostId> PostLiked { get; set; }
+        [ForeignKey("MyPost")]
         public virtual ICollection<PostId> MyPosts { get; set; }
 
 
