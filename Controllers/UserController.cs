@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using static Backend.Enums;
 
 namespace Backend.Controllers
 {
@@ -56,6 +57,7 @@ namespace Backend.Controllers
                         nrPosts = user.MyPosts.Count(),
                         nrFollowers = noFollowers,
                         nrFollowing = noFollowing,
+
                     });
                 }
                 return new JsonResult(new
@@ -82,7 +84,10 @@ namespace Backend.Controllers
             {
                 if ((currentUser.Claims.FirstOrDefault(c => c.Type == "Role").Value) == "Admin")
                     return _db.Users
-                        .Include(user => user.MyPosts).ToList();
+                        .Include(user => user.MyPosts)
+                        .Include(user=> user.Followers)
+                        .Include(user=> user.Following)
+                        .ToList();
             }
             return new JsonResult(new { status = "false" });
         }
@@ -106,7 +111,7 @@ namespace Backend.Controllers
                 if (profilePicture.Count != 1)
                     return new JsonResult(new { status = "false", message = "Too many pictures for one profile image" });
                 var imgurl = uploadImages(profilePicture);
-                if (imgurl.Result.paths.Count != 1)
+                if (imgurl.Result.paths == null || imgurl.Result.paths.Count != 1)
                     return new JsonResult(new { status = "false", message = "Sorry but there is a problem " + imgurl.Result.errors.ElementAt(0) });
                 me.ProfilePic = new ImgURL
                 {
@@ -242,6 +247,35 @@ namespace Backend.Controllers
             return new UploadImgResult { paths = filesPath, errors = errorList };
 
         }
+
+        [HttpGet("getProfilePic")]
+        public async Task<ActionResult> getPhoto()
+        {
+            long id = -1;
+            var userContext = HttpContext.User;
+            if (userContext.HasClaim(claim => claim.Type == "Id"))
+            {
+                if (!long.TryParse(userContext.Claims.FirstOrDefault(claim => claim.Type == "Id").Value, out id))
+                    return new JsonResult(new { status = false, message = "token invalid" });
+                try
+                {
+                    var user = _db.Users.Include(user => user.ProfilePic).Where(user => user.Id == id).Single();
+                    return new JsonResult(new { status = true, image = user.ProfilePic.ImgUrl });
+                }
+                catch (Exception ex)
+                {
+                    return new JsonResult(new { status = false, message = "user not found" });
+
+                }
+            }
+            return new JsonResult(new { status = false, message = "token invalid" });
+
+
+
+        }
+
+
+
         [HttpPut("editpost")]
         //Needs to update photos
         public async Task<ActionResult<Post>> EditPost([FromBody] PostPayload postPayload)
@@ -287,7 +321,7 @@ namespace Backend.Controllers
         }
 
         [HttpGet("getpost")]
-        public async Task<ActionResult<ICollection<Post>>> getPosts(long id, int pageSize, int pageNumber)
+        public async Task<ActionResult> getPosts(long id, int pageSize, int pageNumber)
         {
             var currentUser = HttpContext.User;
             if (currentUser.HasClaim(claims => claims.Type == "Id"))
@@ -316,8 +350,8 @@ namespace Backend.Controllers
                     var aux = user.MyPosts.Reverse().Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
                     foreach (var ids in aux)
                         posts.Add(_db.Posts.Where(post => post.Id == ids.postId).Include(post => post.Images).Single());
+                    return new JsonResult(new { status = "true", posts = posts, nrPost = user.MyPosts.Count() });
 
-                    return posts;
                 }
                 var userFoud = user1.Following.Where(following => following.following == user.Id).FirstOrDefault();
                 if (userFoud == null)
@@ -330,7 +364,8 @@ namespace Backend.Controllers
                     foreach (var ids in user.MyPosts.Reverse().Skip((pageNumber - 1) * pageSize).Take(pageSize))
                         posts.Add(_db.Posts.Where(post => post.Id == ids.postId).Include(post => post.Images).Single());
 
-                    return posts;
+                    return new JsonResult(new { status = "true", posts = posts, nrPost = user.MyPosts.Count() });
+
                 }
 
 
@@ -339,8 +374,252 @@ namespace Backend.Controllers
 
         }
 
+        public async Task<Enums.FollowType> areFriends(long id1, long id2)      
+        {
+            if (id1 == id2)
+            {
+                return FollowType.Friends;
+            }
+            try
+            {
+                User user1 = _db.Users.Include(user=> user.Followers)
+                    .Include(user=> user.Following)
+                    .Where(user => user.Id == id1).Single();
+                User user2 = _db.Users.Where(user => user.Id == id2).Single();
+                UserId? a1=null;
+                try
+                {
+                  a1= user1.Followers.Where(user => user.followedBy == id1 && user.following == id2).Single();
+                }
+                catch (Exception ex)
+                {}
+                UserId? a2 = null;
+                try
+                {
+                    a2 = user1.Followers.Where(user => user.followedBy == id2 && user.following == id1).Single();
+                }
+                catch (Exception ex)
+                { }
+                if (a1  ==null && a2 == null)
+                    return FollowType.NotFriends;
+                if (a1.status == false)
+                {
+                    return FollowType.NotFriends;
+                }
+                else
+                    return FollowType.Friends;
+
+            }
+            catch (Exception)
+            {
+
+                return FollowType.UserNotFound;
+            }
+           
+
+
+        }
 
         #endregion
+        #region comment
+        [HttpPost("addComm")]
+        public async Task<ActionResult> addComment([FromForm] CommentPayload payload)
+        {
+            var userContext = HttpContext.User;
+            if (userContext.HasClaim(claim => claim.Type == "Id"))
+            {
+                long id = -1;
+                if (!long.TryParse(userContext.Claims.First(claim => claim.Type == "Id").Value, out id))
+                {
+                    return new JsonResult(new { status = false, message = "parse id failed" });
+                }
+                Post post;
+                try
+                {
+                    post = _db.Posts.Include(post => post.PostComment).ThenInclude(comm => comm.SubComment).Where(post => post.Id == payload.postId).Single();
 
+                }
+                catch (Exception ex)
+                {
+                    return new JsonResult(new { status = false, message = "post not found" });
+
+                }
+                try
+                {
+                    _db.Users.Where(user => user.Id == id).Single();
+
+                }
+                catch (Exception)
+                {
+
+                    return new JsonResult(new { status = false, message = "you are not in database" });
+                }
+                if (payload.Message == null && payload.Image == null)
+                    return new JsonResult(new { status = false, message = " comment is empty" });
+
+                var rez = await areFriends(id, post.IdUser);
+                switch (rez)
+                {
+                    case FollowType.UserNotFound:
+
+                        return new JsonResult(new { status = false, message = "one of the users not found" });
+                        break;
+                    case FollowType.NotFriends:
+                        return new JsonResult(new { status = false, message = "you can't add a comment to a post that you can't see it" });
+                        break;
+                    case FollowType.Friends:
+                        string link = null;
+                        ImgURL aux = null;
+                        if (payload.Image != null)
+                        {
+                            var uploadImgResult = await uploadImages(payload.Image);
+                            if (uploadImgResult.errors == null && uploadImgResult.paths == null)
+                            {
+                                return new JsonResult(new { status = "false", message = "Our server used for scanning photos for viruses is down" });
+                            }
+                            link = uploadImgResult.paths.ElementAt(0);
+                            aux = new ImgURL
+                            {
+                                ImgUrl = link,
+                            };
+                        }
+
+                        if (payload.CommentId == null)
+                        {
+                            post.PostComment.Add(new Comment
+                            {
+                                Image = aux,
+                                Message = payload.Message,
+                                UserId = id,
+                            });
+                        }
+                        else
+                        {
+                            Comment comm;
+                            try
+                            {
+                                comm = post.PostComment.Where(post => post.Id == payload.CommentId).Single();
+                                comm.SubComment.Add(new Comment
+                                {
+                                    Image = aux,
+                                    Message = payload.Message,
+                                    UserId = id,
+                                });
+                            }
+                            catch (Exception ex)
+                            {
+
+                                return new JsonResult(new { status = false, message = "Comment not found" });
+                            }
+                        }
+                        await _db.SaveChangesAsync();
+                        return new JsonResult(new { status = true, message = "comment added" });
+                        break;
+                }
+            }
+            return new JsonResult(new { status = false, message = " token invalid" });
+        }
+
+
+        [HttpGet("getComm")]
+        public async Task<ActionResult> getComm(long postId,int pageSize, int pageNumber, int mod, long commId)    // mod==1 for comments and mod==2 for subcoments
+        {
+            if(HttpContext.User.HasClaim(claim=> claim.Type == "Id"))
+            {
+                long id = -1;
+                if(!long.TryParse(HttpContext.User.Claims.First(claim => claim.Type == "Id").Value, out id))
+                {
+                    return new JsonResult(new { status= false, message="can't get your id" });
+                }
+                //return new JsonResult(new { nush = _db.Posts.ToList() });
+                Post post;
+                try
+                {
+                    post = _db.Posts.Where(p => p.Id == postId)
+                        .Include(p=>p.PostComment)
+                        .ThenInclude(p=>p.Image)
+                        .Include(p => p.PostComment)
+                        .ThenInclude(p=> p.SubComment)
+                        .ThenInclude(p=> p.Image)
+                        .Single();
+                }
+                catch (Exception ex)
+                {
+                    return new JsonResult(new { status = false, message = "post not found" });
+                }
+                var rez = await  areFriends(id, post.IdUser);
+               
+
+                switch (rez)
+                {
+                    case FollowType.UserNotFound:
+
+                        return new JsonResult(new { status = false, message = "one of the users not found" });
+                        break;
+                    case FollowType.NotFriends:
+                        return new JsonResult(new { status = false, message = "you can't get a comment to a post that you can't see it" });
+                        break;
+                    case FollowType.Friends:
+                        if (mod == 1)
+                        {
+                            var comments = post.PostComment.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+                            List<(string, string)> usersDet=new List<(string, string)>();
+                            foreach(var aux in comments)
+                            {
+                                try
+                                {
+                                    var userAux = _db.Users.Include(usr => usr.ProfilePic).Where(usr => usr.Id == aux.UserId).Single();
+                                    usersDet.Add((userAux.FirstName+ " "+ userAux.LastName, userAux.ProfilePic.ImgUrl));
+                                }
+                                catch (Exception)
+                                {
+                                    comments.Remove(aux);
+                                }
+                              
+                            
+                            }
+
+                            return new JsonResult(new { status = true, comments = comments, detUsers = usersDet });
+                        }
+                        else if(mod==2)
+                        {
+                            try
+                            {
+                                var comm=post.PostComment.Where(comm => comm.Id == commId).Single();
+                                var subcomm=comm.SubComment.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+                                List<(string, string)> usersDet = new List<(string, string)>();
+                                foreach (var aux in subcomm)
+                                {
+                                    try
+                                    {
+                                        var userAux = _db.Users.Include(usr => usr.ProfilePic).Where(usr => usr.Id == aux.UserId).Single();
+                                        usersDet.Add((userAux.FirstName + " " + userAux.LastName, userAux.ProfilePic.ImgUrl));
+                                    }
+                                    catch (Exception)
+                                    {
+                                        subcomm.Remove(aux);
+                                    }
+
+
+                                }
+                                return new JsonResult(new { status = true, subcomments = subcomm, detUsers= usersDet });
+                            }
+                            catch (Exception)
+                            {
+                                return new JsonResult(new { status = false, message = "comment not found" });
+                            }
+                           
+                        }
+                      
+
+                        break;
+                }
+                return new JsonResult(new { status = false, message = "Something went wrong" });
+
+            }
+            return new JsonResult(new { status = false, message = "token invalid" });
+        }
+
+        #endregion
     }
 }

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace Backend.Entities.Models
@@ -8,8 +7,8 @@ namespace Backend.Entities.Models
     {
         [Key]
         public long Id { get; set; }
-        public int UserId { get; set; }
-        public String? Message { get; set; }
+        public long UserId { get; set; }
+        public string? Message { get; set; }
         public ImgURL? Image { get; set; }
         public List<Comment> SubComment { get; set; }
 

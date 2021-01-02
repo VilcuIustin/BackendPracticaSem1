@@ -1,5 +1,6 @@
 ﻿using Backend.Entities;
 using Backend.Entities.Models;
+using Backend.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -16,10 +17,12 @@ namespace Backend.Controllers
     public class FollowController : Controller
     {
         private readonly BackendContext _db;
+        private readonly NotificationHub _notification;
 
         public FollowController(BackendContext db)
         {
             _db = db;
+
         }
 
         [HttpGet("getfollowers/{id}")]              //0 - the same user.     1 - not followed   2 - your request is in pending 
@@ -66,11 +69,18 @@ namespace Backend.Controllers
                     if (following != null && follower != null)
                     {
                         if (following.followedBy == myId)
+                        {
+                            if (following.status == true)
+                                return 4;
                             return 2;
+                        }
+
                         else if (following.followedBy == id)
+                        {
+                            if (following.status == true)
+                                return 4;
                             return 3;
-                        else if (following.status == true)
-                            return 4;
+                        }
                         return 1;
                     }
                 }
@@ -83,11 +93,20 @@ namespace Backend.Controllers
                     if (following2 != null && follower2 != null)
                     {
                         if (following2.followedBy == myId)
+                        {
+                            if (following2.status == true)
+                                return 4;
                             return 2;
+                        }
+
                         else if (following2.followedBy == id)
+                        {
+                            if (following2.status == true)
+                                return 4;
                             return 3;
-                        else if (following2.status == true)
-                            return 4;
+                        }
+
+
                     }
                     return 1;
                 }
@@ -95,10 +114,10 @@ namespace Backend.Controllers
                 { }
 
                 return 1;
-              
+
             }
             return BadRequest("Your token is invalid");
-          
+
 
         }
 
@@ -116,7 +135,7 @@ namespace Backend.Controllers
                 var me = _db.Users.Include(user => user.Following).Where(user => user.Id == idUser).Single();
                 try
                 {
-                    var userForFollow = _db.Users.Include(user => user.Followers).Where(user => user.Id == id).Single();
+                    var userForFollow = _db.Users.Include(user => user.Followers).Include(user => user.notifications).Where(user => user.Id == id).Single();
 
                     me.Following.Add(new UserId
                     {
@@ -130,7 +149,15 @@ namespace Backend.Controllers
                         following = id,
                         status = false
                     });
+                    userForFollow.newNotifications++;
 
+                    userForFollow.notifications.ToList().Add(new Notification
+                    {
+                        message = "sended you a follow request",
+                        idReceiver = userForFollow.Id,
+                        idSender = me.Id,
+
+                    });
 
 
                     await _db.SaveChangesAsync();
@@ -149,7 +176,7 @@ namespace Backend.Controllers
 
 
         [HttpDelete("Unfallow/{id}")]
-        public async Task<IActionResult> unfallow( long id)
+        public async Task<IActionResult> unfallow(long id)
         {
             var currentUser = HttpContext.User;
             if (currentUser.HasClaim(claims => claims.Type == "Id"))
@@ -192,7 +219,7 @@ namespace Backend.Controllers
                     me.Following.Remove(following);
                     otherusr.Followers.Remove(follower);
                     _db.SaveChanges();
-                    return new JsonResult( new { status ="true"});
+                    return new JsonResult(new { status = "true", message = " success" });
                 }
                 catch (Exception)
                 { }
@@ -203,14 +230,97 @@ namespace Backend.Controllers
                     me.Followers.Remove(follower2);
                     otherusr.Following.Remove(following2);
                     _db.SaveChanges();
-                    return new JsonResult(new { status = "true" });
+                    return new JsonResult(new { status = "true", message = " success" });
                 }
                 catch (Exception)
                 { }
-              
+                return new JsonResult(new { status = "false", message = "You are not following this user" });
 
             }
-            return new JsonResult(new { status = "false", message = "token invalide" });
+            return new JsonResult(new { status = "false", message = "token invalid" });
         }
+
+        [HttpPost("acceptfollow")]
+        public async Task<IActionResult> acceptFollow([FromBody] long id)
+        {
+            var currentUser = HttpContext.User;
+            if (currentUser.HasClaim(claims => claims.Type == "Id"))
+            {
+                long myId;
+                bool re = long.TryParse((currentUser.Claims.FirstOrDefault(c => c.Type == "Id").Value), out myId);
+                if (!re)
+                    return BadRequest("Can't parse id");
+
+                if (myId == id)
+                {
+                    return new JsonResult(new { status = "false", message = "you can't fallow yourself" });
+
+                }
+                User me;
+                User otherusr;
+                try
+                {
+                    me = _db.Users.Include(user => user.Following)
+                        .Include(user => user.Followers)
+                        .Where(user => user.Id == myId).Single();
+                    otherusr = _db.Users.Include(user => user.Followers)
+                        .Include(user => user.Following)
+                        .Include(user => user.notifications)
+                        .Where(user => user.Id == id).Single();
+                }
+                catch (ArgumentNullException)
+                {
+                    return BadRequest("User not found");
+
+                }
+
+                UserId following = null;
+                UserId follower = null;
+                UserId following2 = null;
+                UserId follower2 = null;
+                try
+                {
+                    following = me.Following.Where(user => user.following == id).Single();
+                    follower = otherusr.Followers.Where(user => user.followedBy == myId).Single();
+                    following.status = true;
+                    follower.status = true;
+
+
+
+                    _db.SaveChanges();
+                    return new JsonResult(new { status = "true", message = " success" });
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    follower2 = me.Followers.Where(user => user.followedBy == id).Single();
+                    following2 = otherusr.Following.Where(user => user.following == myId).Single();
+                    following2.status = true;
+                    follower2.status = true;
+                    otherusr.notifications.ToList().Insert(0, new Notification
+                    {
+                        message = "sended you a follow request",
+                        idReceiver = otherusr.Id,
+                        idSender = me.Id,
+
+                    });
+                    otherusr.newNotifications++;
+
+
+
+                    _db.SaveChanges();
+                    return new JsonResult(new { status = "true", message = " success" });
+                }
+                catch (Exception)
+                { }
+                return new JsonResult(new { status = "false", message = "You have no follow request from this user" });
+
+            }
+            return new JsonResult(new { status = "false", message = "token invalid" });
+        }
+
+
     }
+
 }

@@ -15,6 +15,8 @@ namespace Backend.Controllers
         public string FirstName { get; set; }
         [Required]
         public string LastName { get; set; }
+        [Required]
+        public string gender { get; set; }
 
 
 

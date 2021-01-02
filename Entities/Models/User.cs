@@ -16,7 +16,9 @@ namespace Backend.Entities.Models
         public string Gender { get; set; }
         public string Role { get; set; }
         public ImgURL ProfilePic { get; set; }
+        public int newNotifications { get; set; }
         public virtual ICollection<UserId> Followers { get; set; }
+        public virtual ICollection<Notification> notifications { get; set; }
         public virtual ICollection<UserId> Following { get; set; }
         [ForeignKey("idPost")]
         public virtual ICollection<PostId> PostLiked { get; set; }
