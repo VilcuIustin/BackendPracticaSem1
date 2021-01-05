@@ -9,6 +9,7 @@ namespace Backend.Entities.Models
         public long Id { get; set; }
         public long UserId { get; set; }
         public string? Message { get; set; }
+        
         public ImgURL? Image { get; set; }
         public List<Comment> SubComment { get; set; }
 

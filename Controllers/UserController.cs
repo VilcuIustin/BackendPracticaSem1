@@ -347,14 +347,22 @@ namespace Backend.Controllers
                     //  List<Post> posts = new List<Post>(user.MyPosts.Reverse().Skip((pageNumber - 1) * pageSize)
                     //         .Take(pageSize));
                     List<Post> posts = new List<Post>();
+                  
                     var aux = user.MyPosts.Reverse().Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
                     foreach (var ids in aux)
-                        posts.Add(_db.Posts.Where(post => post.Id == ids.postId).Include(post => post.Images).Single());
-                    return new JsonResult(new { status = "true", posts = posts, nrPost = user.MyPosts.Count() });
+                    {
+                        Post p = _db.Posts.Where(post => post.Id == ids.postId).Include(post => post.Images).Single();
+                        posts.Add(p);
+                    }
+                       
+                    return new JsonResult(new { status = "true", posts = posts, nrPost = user.MyPosts.Count()});
 
                 }
+                var nush = areFriends(user.Id, user1.Id);
                 var userFoud = user1.Following.Where(following => following.following == user.Id).FirstOrDefault();
-                if (userFoud == null)
+                var userFoud2 = user1.Following.Where(followers => followers.followedBy == user.Id).FirstOrDefault();
+
+                if (userFoud == null && userFoud2 == null)
                 {
                     return new JsonResult(new { status = "false", message = "This profile is private. " });
                 }
@@ -425,6 +433,10 @@ namespace Backend.Controllers
         [HttpPost("addComm")]
         public async Task<ActionResult> addComment([FromForm] CommentPayload payload)
         {
+            if(payload.Image==null && payload.Message == null)
+            {
+                return new JsonResult(new { status = false, message = " you can't add a comment that is empty" });
+            }
             var userContext = HttpContext.User;
             if (userContext.HasClaim(claim => claim.Type == "Id"))
             {
@@ -486,6 +498,7 @@ namespace Backend.Controllers
 
                         if (payload.CommentId == null)
                         {
+                            post.nrComm++;
                             post.PostComment.Add(new Comment
                             {
                                 Image = aux,
@@ -499,6 +512,7 @@ namespace Backend.Controllers
                             try
                             {
                                 comm = post.PostComment.Where(post => post.Id == payload.CommentId).Single();
+                                
                                 comm.SubComment.Add(new Comment
                                 {
                                     Image = aux,
@@ -579,7 +593,7 @@ namespace Backend.Controllers
                             
                             }
 
-                            return new JsonResult(new { status = true, comments = comments, detUsers = usersDet });
+                            return new JsonResult(new { status = true, comments = comments, detUsers = usersDet, nrComments= post.PostComment.Count() });
                         }
                         else if(mod==2)
                         {
@@ -602,7 +616,7 @@ namespace Backend.Controllers
 
 
                                 }
-                                return new JsonResult(new { status = true, subcomments = subcomm, detUsers= usersDet });
+                                return new JsonResult(new { status = true, subcomments = subcomm, detUsers= usersDet, nrComments = post.PostComment.Count() });
                             }
                             catch (Exception)
                             {
