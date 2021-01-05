@@ -57,6 +57,7 @@ namespace Backend
                     }
                 };
             });
+            services.AddSingleton<ConectionMapping>();
 
             // services.AddCors();
             /* services.AddCors(options =>
