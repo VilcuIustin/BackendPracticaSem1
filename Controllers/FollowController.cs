@@ -4,8 +4,10 @@ using Backend.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -17,11 +19,12 @@ namespace Backend.Controllers
     public class FollowController : Controller
     {
         private readonly BackendContext _db;
-        private readonly NotificationHub _notification;
+        private readonly IHubContext<NotificationHub> _notification;
 
-        public FollowController(BackendContext db)
+        public FollowController(BackendContext db, IHubContext<NotificationHub> notification)
         {
             _db = db;
+            _notification = notification;
 
         }
 
@@ -161,6 +164,7 @@ namespace Backend.Controllers
 
 
                     await _db.SaveChangesAsync();
+                    await sendNotifications(id);
                     return new JsonResult(new { status = "true", message = "Follow request sended" });
                 }
                 catch (InvalidOperationException)
@@ -284,7 +288,19 @@ namespace Backend.Controllers
                     follower = otherusr.Followers.Where(user => user.followedBy == myId).Single();
                     following.status = true;
                     follower.status = true;
+                    me.Followers.Add(new UserId
+                    {
+                        followedBy = id,
+                        following = myId,
+                        status = true
+                    });
 
+                    otherusr.Following.Add(new UserId
+                    {
+                        followedBy = myId,
+                        following = id,
+                        status = true
+                    });
 
 
                     _db.SaveChanges();
@@ -298,6 +314,22 @@ namespace Backend.Controllers
                     following2 = otherusr.Following.Where(user => user.following == myId).Single();
                     following2.status = true;
                     follower2.status = true;
+                    me.Following.Add(new UserId
+                    {
+                        followedBy = myId,
+                        following = id,
+                        status = true
+                    });
+
+                    otherusr.Followers.Add(new UserId
+                    {
+                        followedBy = myId,
+                        following = id,
+                        status = true
+                    });
+
+
+
                     otherusr.notifications.ToList().Insert(0, new Notification
                     {
                         message = "sended you a follow request",
@@ -319,6 +351,21 @@ namespace Backend.Controllers
             }
             return new JsonResult(new { status = "false", message = "token invalid" });
         }
+
+        public async Task sendNotifications(long id)
+        {
+
+            HashSet<string> conections = ConectionMapping.Instance.Find(id);
+            if (conections == null)
+            {
+                return;
+            }
+            foreach (string conn in conections)
+            {
+                await _notification.Clients.Client(conn).SendAsync("NewNotificationReceived");
+            }
+        }
+
 
 
     }

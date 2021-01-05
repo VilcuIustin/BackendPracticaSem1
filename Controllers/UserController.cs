@@ -85,8 +85,8 @@ namespace Backend.Controllers
                 if ((currentUser.Claims.FirstOrDefault(c => c.Type == "Role").Value) == "Admin")
                     return _db.Users
                         .Include(user => user.MyPosts)
-                        .Include(user=> user.Followers)
-                        .Include(user=> user.Following)
+                        .Include(user => user.Followers)
+                        .Include(user => user.Following)
                         .ToList();
             }
             return new JsonResult(new { status = "false" });
@@ -347,22 +347,19 @@ namespace Backend.Controllers
                     //  List<Post> posts = new List<Post>(user.MyPosts.Reverse().Skip((pageNumber - 1) * pageSize)
                     //         .Take(pageSize));
                     List<Post> posts = new List<Post>();
-                  
+
                     var aux = user.MyPosts.Reverse().Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
                     foreach (var ids in aux)
                     {
                         Post p = _db.Posts.Where(post => post.Id == ids.postId).Include(post => post.Images).Single();
                         posts.Add(p);
                     }
-                       
-                    return new JsonResult(new { status = "true", posts = posts, nrPost = user.MyPosts.Count()});
+
+                    return new JsonResult(new { status = "true", posts = posts, nrPost = user.MyPosts.Count() });
 
                 }
-                var nush = areFriends(user.Id, user1.Id);
-                var userFoud = user1.Following.Where(following => following.following == user.Id).FirstOrDefault();
-                var userFoud2 = user1.Following.Where(followers => followers.followedBy == user.Id).FirstOrDefault();
-
-                if (userFoud == null && userFoud2 == null)
+                var frirends = await areFriends(user.Id, user1.Id);
+                if (frirends == FollowType.NotFriends)
                 {
                     return new JsonResult(new { status = "false", message = "This profile is private. " });
                 }
@@ -382,7 +379,7 @@ namespace Backend.Controllers
 
         }
 
-        public async Task<Enums.FollowType> areFriends(long id1, long id2)      
+        public async Task<Enums.FollowType> areFriends(long id1, long id2)
         {
             if (id1 == id2)
             {
@@ -390,27 +387,29 @@ namespace Backend.Controllers
             }
             try
             {
-                User user1 = _db.Users.Include(user=> user.Followers)
-                    .Include(user=> user.Following)
+                User user1 = _db.Users.Include(user => user.Followers)
+                    .Include(user => user.Following)
                     .Where(user => user.Id == id1).Single();
                 User user2 = _db.Users.Where(user => user.Id == id2).Single();
-                UserId? a1=null;
-                try
-                {
-                  a1= user1.Followers.Where(user => user.followedBy == id1 && user.following == id2).Single();
-                }
-                catch (Exception ex)
-                {}
+                UserId? a1 = null;
+                UserId? a3 = null;
+
+                a1 = user1.Followers.Where(user => user.followedBy == id1 && user.following == id2).FirstOrDefault();
+                a3 = user1.Followers.Where(user => user.followedBy == id2 && user.following == id1).FirstOrDefault();
+
                 UserId? a2 = null;
-                try
-                {
-                    a2 = user1.Followers.Where(user => user.followedBy == id2 && user.following == id1).Single();
-                }
-                catch (Exception ex)
-                { }
-                if (a1  ==null && a2 == null)
+                UserId? a4 = null;
+
+                a2 = user1.Following.Where(user => user.followedBy == id1 && user.following == id2).FirstOrDefault();
+                a4 = user1.Following.Where(user => user.followedBy == id2 && user.following == id1).FirstOrDefault();
+
+                if (a1 == null && a2 == null && a3==null && a4==null)
                     return FollowType.NotFriends;
-                if (a1.status == false)
+                if (a3 != null && a2 != null && a2.status == false)
+                {
+                    return FollowType.NotFriends;
+                }
+                if(a1 != null && a4 != null && a1.status == false)
                 {
                     return FollowType.NotFriends;
                 }
@@ -423,7 +422,7 @@ namespace Backend.Controllers
 
                 return FollowType.UserNotFound;
             }
-           
+
 
 
         }
@@ -433,7 +432,7 @@ namespace Backend.Controllers
         [HttpPost("addComm")]
         public async Task<ActionResult> addComment([FromForm] CommentPayload payload)
         {
-            if(payload.Image==null && payload.Message == null)
+            if (payload.Image == null && payload.Message == null)
             {
                 return new JsonResult(new { status = false, message = " you can't add a comment that is empty" });
             }
@@ -512,7 +511,7 @@ namespace Backend.Controllers
                             try
                             {
                                 comm = post.PostComment.Where(post => post.Id == payload.CommentId).Single();
-                                
+
                                 comm.SubComment.Add(new Comment
                                 {
                                     Image = aux,
@@ -536,33 +535,33 @@ namespace Backend.Controllers
 
 
         [HttpGet("getComm")]
-        public async Task<ActionResult> getComm(long postId,int pageSize, int pageNumber, int mod, long commId)    // mod==1 for comments and mod==2 for subcoments
+        public async Task<ActionResult> getComm(long postId, int pageSize, int pageNumber, int mod, long commId)    // mod==1 for comments and mod==2 for subcoments
         {
-            if(HttpContext.User.HasClaim(claim=> claim.Type == "Id"))
+            if (HttpContext.User.HasClaim(claim => claim.Type == "Id"))
             {
                 long id = -1;
-                if(!long.TryParse(HttpContext.User.Claims.First(claim => claim.Type == "Id").Value, out id))
+                if (!long.TryParse(HttpContext.User.Claims.First(claim => claim.Type == "Id").Value, out id))
                 {
-                    return new JsonResult(new { status= false, message="can't get your id" });
+                    return new JsonResult(new { status = false, message = "can't get your id" });
                 }
                 //return new JsonResult(new { nush = _db.Posts.ToList() });
                 Post post;
                 try
                 {
                     post = _db.Posts.Where(p => p.Id == postId)
-                        .Include(p=>p.PostComment)
-                        .ThenInclude(p=>p.Image)
                         .Include(p => p.PostComment)
-                        .ThenInclude(p=> p.SubComment)
-                        .ThenInclude(p=> p.Image)
+                        .ThenInclude(p => p.Image)
+                        .Include(p => p.PostComment)
+                        .ThenInclude(p => p.SubComment)
+                        .ThenInclude(p => p.Image)
                         .Single();
                 }
                 catch (Exception ex)
                 {
                     return new JsonResult(new { status = false, message = "post not found" });
                 }
-                var rez = await  areFriends(id, post.IdUser);
-               
+                var rez = await areFriends(post.IdUser, id);
+
 
                 switch (rez)
                 {
@@ -577,30 +576,30 @@ namespace Backend.Controllers
                         if (mod == 1)
                         {
                             var comments = post.PostComment.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
-                            List<(string, string)> usersDet=new List<(string, string)>();
-                            foreach(var aux in comments)
+                            List<(string, string)> usersDet = new List<(string, string)>();
+                            foreach (var aux in comments)
                             {
                                 try
                                 {
                                     var userAux = _db.Users.Include(usr => usr.ProfilePic).Where(usr => usr.Id == aux.UserId).Single();
-                                    usersDet.Add((userAux.FirstName+ " "+ userAux.LastName, userAux.ProfilePic.ImgUrl));
+                                    usersDet.Add((userAux.FirstName + " " + userAux.LastName, userAux.ProfilePic.ImgUrl));
                                 }
                                 catch (Exception)
                                 {
                                     comments.Remove(aux);
                                 }
-                              
-                            
+
+
                             }
 
-                            return new JsonResult(new { status = true, comments = comments, detUsers = usersDet, nrComments= post.PostComment.Count() });
+                            return new JsonResult(new { status = true, comments = comments, detUsers = usersDet, nrComments = post.PostComment.Count() });
                         }
-                        else if(mod==2)
+                        else if (mod == 2)
                         {
                             try
                             {
-                                var comm=post.PostComment.Where(comm => comm.Id == commId).Single();
-                                var subcomm=comm.SubComment.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+                                var comm = post.PostComment.Where(comm => comm.Id == commId).Single();
+                                var subcomm = comm.SubComment.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
                                 List<(string, string)> usersDet = new List<(string, string)>();
                                 foreach (var aux in subcomm)
                                 {
@@ -616,15 +615,15 @@ namespace Backend.Controllers
 
 
                                 }
-                                return new JsonResult(new { status = true, subcomments = subcomm, detUsers= usersDet, nrComments = post.PostComment.Count() });
+                                return new JsonResult(new { status = true, subcomments = subcomm, detUsers = usersDet, nrComments = post.PostComment.Count() });
                             }
                             catch (Exception)
                             {
                                 return new JsonResult(new { status = false, message = "comment not found" });
                             }
-                           
+
                         }
-                      
+
 
                         break;
                 }
