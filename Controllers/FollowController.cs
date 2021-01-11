@@ -48,12 +48,9 @@ namespace Backend.Controllers
                 User otherusr;
                 try
                 {
-                    me = _db.Users.Include(user => user.Following)
-                        .Include(user => user.Followers)
+                    me = _db.Users.Include(user => user.Friends)
                         .Where(user => user.Id == myId).Single();
-                    otherusr = _db.Users.Include(user => user.Followers)
-                        .Include(user => user.Following)
-                        .Where(user => user.Id == id).Single();
+                  
                 }
                 catch (ArgumentNullException)
                 {
@@ -61,13 +58,13 @@ namespace Backend.Controllers
 
                 }
 
-                UserId following = null;
-                UserId follower = null;
-                UserId following2 = null;
-                UserId follower2 = null;
+                Friend following = null;
+                Friend follower = null;
+                Friend following2 = null;
+                Friend follower2 = null;
                 try
                 {
-                    following = me.Following.Where(user => user.following == id).Single();
+                    following = me.Friends.Where(user => user.following == id).Single();
                     follower = otherusr.Followers.Where(user => user.followedBy == myId).Single();
                     if (following != null && follower != null)
                     {
@@ -126,7 +123,7 @@ namespace Backend.Controllers
 
 
         [HttpPost("followreq")]
-        public async Task<ActionResult> Follow([FromBody] long id)     //trebuie rescris pentru SignalR
+        public async Task<ActionResult> AddFriend([FromBody] long id)     
         {
             var currentUser = HttpContext.User;
             if (currentUser.HasClaim(claims => claims.Type == "Id"))
@@ -135,21 +132,28 @@ namespace Backend.Controllers
                 bool re = long.TryParse((currentUser.Claims.FirstOrDefault(c => c.Type == "Id").Value), out idUser);
                 if (!re)
                     return BadRequest("Can't parse id");
-                var me = _db.Users.Include(user => user.Following).Where(user => user.Id == idUser).Single();
+               
                 try
                 {
-                    var userForFollow = _db.Users.Include(user => user.Followers).Include(user => user.notifications).Where(user => user.Id == id).Single();
-
-                    me.Following.Add(new UserId
+                    var me = _db.Users.Include(user => user.Friends).Where(user => user.Id == idUser).Single();
+                    //var follow1 = me.Following.FirstOrDefault(follow => follow.fo == id);
+                    var follow2 = me.Friends.FirstOrDefault(follow => follow.User1 == id);
+                    if (follow2 != null)
                     {
-                        followedBy = idUser,
-                        following = id,
+                        return (ActionResult)await acceptFollow(id);
+                    }
+                    var userForFollow = _db.Users.Include(user => user.Friends).Include(user => user.notifications).Where(user => user.Id == id).Single();
+
+                    me.Friends.Add(new Friend
+                    {
+                        User1 = idUser,
+                        User2 = id,
                         status = false
                     });
-                    userForFollow.Followers.Add(new UserId
+                    userForFollow.Friends.Add(new Friend
                     {
-                        followedBy = idUser,
-                        following = id,
+                        User1 = idUser,
+                        User2 = id,
                         status = false
                     });
                     userForFollow.newNotifications++;
@@ -199,11 +203,9 @@ namespace Backend.Controllers
                 User otherusr;
                 try
                 {
-                    me = _db.Users.Include(user => user.Following)
-                        .Include(user => user.Followers)
+                    me = _db.Users.Include(user => user.Friends)
                         .Where(user => user.Id == myId).Single();
-                    otherusr = _db.Users.Include(user => user.Followers)
-                        .Include(user => user.Following)
+                    otherusr = _db.Users.Include(user => user.Friends)
                         .Where(user => user.Id == id).Single();
                 }
                 catch (ArgumentNullException)
@@ -212,32 +214,27 @@ namespace Backend.Controllers
 
                 }
 
-                UserId following = null;
-                UserId follower = null;
-                UserId following2 = null;
-                UserId follower2 = null;
+                Friend following = null;
+                Friend follower = null;
+                Friend following2 = null;
+                Friend follower2 = null;
                 try
                 {
-                    following = me.Following.Where(user => user.following == id).Single();
-                    follower = otherusr.Followers.Where(user => user.followedBy == myId).Single();
+                    following = me.Friends.Where(user => user.User1 == id && user.User2==myId).Single();
+                    follower = me.Friends.Where(user => user.User1 == myId && user.User2 == id).Single();
                     me.Following.Remove(following);
                     otherusr.Followers.Remove(follower);
-                    _db.SaveChanges();
-                    return new JsonResult(new { status = "true", message = " success" });
-                }
-                catch (Exception)
-                { }
-                try
-                {
                     follower2 = me.Followers.Where(user => user.followedBy == id).Single();
                     following2 = otherusr.Following.Where(user => user.following == myId).Single();
                     me.Followers.Remove(follower2);
                     otherusr.Following.Remove(following2);
                     _db.SaveChanges();
+                    
                     return new JsonResult(new { status = "true", message = " success" });
                 }
                 catch (Exception)
                 { }
+
                 return new JsonResult(new { status = "false", message = "You are not following this user" });
 
             }
@@ -278,24 +275,24 @@ namespace Backend.Controllers
 
                 }
 
-                UserId following = null;
-                UserId follower = null;
-                UserId following2 = null;
-                UserId follower2 = null;
+                Friend following = null;
+                Friend follower = null;
+                Friend following2 = null;
+                Friend follower2 = null;
                 try
                 {
                     following = me.Following.Where(user => user.following == id).Single();
                     follower = otherusr.Followers.Where(user => user.followedBy == myId).Single();
                     following.status = true;
                     follower.status = true;
-                    me.Followers.Add(new UserId
+                    me.Followers.Add(new Friend
                     {
                         followedBy = id,
                         following = myId,
                         status = true
                     });
 
-                    otherusr.Following.Add(new UserId
+                    otherusr.Following.Add(new Friend
                     {
                         followedBy = myId,
                         following = id,
@@ -314,14 +311,14 @@ namespace Backend.Controllers
                     following2 = otherusr.Following.Where(user => user.following == myId).Single();
                     following2.status = true;
                     follower2.status = true;
-                    me.Following.Add(new UserId
+                    me.Following.Add(new Friend
                     {
                         followedBy = myId,
                         following = id,
                         status = true
                     });
 
-                    otherusr.Followers.Add(new UserId
+                    otherusr.Followers.Add(new Friend
                     {
                         followedBy = myId,
                         following = id,

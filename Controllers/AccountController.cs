@@ -145,6 +145,41 @@ namespace Backend.Controllers
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+        [Authorize]
+        [HttpPatch("ChangeName")]
+        public async Task<ActionResult> ChangeName([FromBody] ChangeNamePayload changename)
+        {
+            if(HttpContext.User.HasClaim(claim=> claim.Type == "Id"))
+            {
+                long id;
+                if(!long.TryParse(HttpContext.User.Claims.FirstOrDefault(claim => claim.Type == "Id").Value, out id))
+                {
+                    return Unauthorized("TOKEN INVALID PARSE ID FAILED");
+                }
+                var user = _db.Users.Find(id);
+                if (user == null)
+                {
+                    return Unauthorized("User Not Found");
+                }
+
+                if(user.FirstName== changename.Firstname && user.LastName== changename.Lastname)
+                {
+                    return Ok();
+                }
+                else
+                {
+                    user.FirstName = changename.Firstname;
+                    user.LastName = changename.Lastname;
+                }
+                await _db.SaveChangesAsync();
+                return Ok();
+            }
+            return Unauthorized("TOKEN INVALID");
+
+
+        }
+
+
 
     }
 }

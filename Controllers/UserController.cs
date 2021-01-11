@@ -30,6 +30,16 @@ namespace Backend.Controllers
             _configuration = configuration;
         }
 
+        [HttpGet("getName/{id}")]
+        public async Task<ActionResult> getName( long id)
+        {
+            var user = _db.Users.FirstOrDefault(user => user.Id == id);
+            if (user == null)
+                return new JsonResult(new { status = false, message="user not found" });
+            return new JsonResult(new { status = true, firstname = user.FirstName, lastname = user.LastName });
+        } 
+
+
         [HttpGet("getuser/{id}")]
         public async Task<ActionResult<User>> GetUserById([FromRoute] long id)
         {
@@ -391,14 +401,14 @@ namespace Backend.Controllers
                     .Include(user => user.Following)
                     .Where(user => user.Id == id1).Single();
                 User user2 = _db.Users.Where(user => user.Id == id2).Single();
-                UserId? a1 = null;
-                UserId? a3 = null;
+                Friend? a1 = null;
+                Friend? a3 = null;
 
                 a1 = user1.Followers.Where(user => user.followedBy == id1 && user.following == id2).FirstOrDefault();
                 a3 = user1.Followers.Where(user => user.followedBy == id2 && user.following == id1).FirstOrDefault();
 
-                UserId? a2 = null;
-                UserId? a4 = null;
+                Friend? a2 = null;
+                Friend? a4 = null;
 
                 a2 = user1.Following.Where(user => user.followedBy == id1 && user.following == id2).FirstOrDefault();
                 a4 = user1.Following.Where(user => user.followedBy == id2 && user.following == id1).FirstOrDefault();
@@ -413,8 +423,12 @@ namespace Backend.Controllers
                 {
                     return FollowType.NotFriends;
                 }
-                else
+                if ((a1 != null && a4 != null && a1.status == true)|| (a3 != null && a2 != null && a2.status == true))
+                {
                     return FollowType.Friends;
+                }
+                return FollowType.NotFriends; 
+
 
             }
             catch (Exception)

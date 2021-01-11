@@ -22,6 +22,7 @@ namespace Backend.Entities
             .WithOne();
             modelBuilder.Entity<User>().HasMany(b => b.Following)
            .WithOne();
+
         }
 
 
