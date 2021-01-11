@@ -7,9 +7,9 @@ namespace Backend.Entities.Models
     {
         [Key]
         public long Id { get; set; }
-        [ForeignKey("postId")]
+        [ForeignKey("post")]
         public long postId { get; set; }
-        [ForeignKey("Iduser")]
+        //[ForeignKey("userId")]
         public long userId { get; set; }
 
     }

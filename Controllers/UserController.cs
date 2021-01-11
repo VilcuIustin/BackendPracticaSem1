@@ -47,17 +47,15 @@ namespace Backend.Controllers
             {
                 var user = _db.Users
                     .Include(user => user.MyPosts)
-                    .Include(user => user.Followers)
-                    .Include(user => user.Following)
+                    .Include(user => user.Friends)
                     .Include(user => user.ProfilePic)
                     .Where(user => id == user.Id)
                     .Single();
 
-                long noFollowers, noFollowing;
-                var aux = user.Followers.Where(follower => follower.status == true);
+                long noFollowers;
+                var aux = user.Friends.Where(follower => follower.status == true);
                 noFollowers = aux.Count();
-                aux = user.Following.Where(follower => follower.status == true);
-                noFollowing = aux.Count();
+
                 if (user.ProfilePic == null)
                 {
                     return new JsonResult(new
@@ -66,7 +64,7 @@ namespace Backend.Controllers
                         username = user.FirstName + " " + user.LastName,
                         nrPosts = user.MyPosts.Count(),
                         nrFollowers = noFollowers,
-                        nrFollowing = noFollowing,
+                       
 
                     });
                 }
@@ -76,7 +74,6 @@ namespace Backend.Controllers
                     username = user.FirstName + " " + user.LastName,
                     nrPosts = user.MyPosts.Count(),
                     nrFollowers = noFollowers,
-                    nrFollowing = noFollowing,
                     profileImg = "https://localhost:44355/images/" + user.ProfilePic.ImgUrl
                 });
 
@@ -95,8 +92,7 @@ namespace Backend.Controllers
                 if ((currentUser.Claims.FirstOrDefault(c => c.Type == "Role").Value) == "Admin")
                     return _db.Users
                         .Include(user => user.MyPosts)
-                        .Include(user => user.Followers)
-                        .Include(user => user.Following)
+                        .Include(user => user.Friends)
                         .ToList();
             }
             return new JsonResult(new { status = "false" });
@@ -133,6 +129,15 @@ namespace Backend.Controllers
             return new JsonResult(new { status = "false", message = "Token is invalid" });
 
         }
+
+       /* [HttpGet("search")]
+        public async Task<ActionResult> search(string name, int pageSize, int pageNumber)
+        {
+
+
+
+        }
+*/
 
 
         #region Post
@@ -341,7 +346,7 @@ namespace Backend.Controllers
                 User user1;
                 try
                 {
-                    user1 = _db.Users.Where(user => user.Id == idUser).Include(following => following.Following).FirstOrDefault();
+                    user1 = _db.Users.Where(user => user.Id == idUser).Include(following => following.Friends).FirstOrDefault();
                 }
                 catch (Exception ex)
                 {
@@ -368,8 +373,8 @@ namespace Backend.Controllers
                     return new JsonResult(new { status = "true", posts = posts, nrPost = user.MyPosts.Count() });
 
                 }
-                var frirends = await areFriends(user.Id, user1.Id);
-                if (frirends == FollowType.NotFriends)
+                var friends = await areFriends(user.Id, user1.Id);
+                if (friends == FollowType.NotFriends || friends==FollowType.Pending || friends == FollowType.Wait)
                 {
                     return new JsonResult(new { status = "false", message = "This profile is private. " });
                 }
@@ -397,37 +402,30 @@ namespace Backend.Controllers
             }
             try
             {
-                User user1 = _db.Users.Include(user => user.Followers)
-                    .Include(user => user.Following)
-                    .Where(user => user.Id == id1).Single();
+                User user1 = _db.Users.Include(user => user.Friends)
+                  .Where(user => user.Id == id1).Single();
                 User user2 = _db.Users.Where(user => user.Id == id2).Single();
                 Friend? a1 = null;
-                Friend? a3 = null;
-
-                a1 = user1.Followers.Where(user => user.followedBy == id1 && user.following == id2).FirstOrDefault();
-                a3 = user1.Followers.Where(user => user.followedBy == id2 && user.following == id1).FirstOrDefault();
-
                 Friend? a2 = null;
-                Friend? a4 = null;
 
-                a2 = user1.Following.Where(user => user.followedBy == id1 && user.following == id2).FirstOrDefault();
-                a4 = user1.Following.Where(user => user.followedBy == id2 && user.following == id1).FirstOrDefault();
+                a1 = user1.Friends.Where(user => user.User1 == id1 && user.User2 == id2).FirstOrDefault();
+                a2 = user1.Friends.Where(user => user.User1 == id2 && user.User2 == id1).FirstOrDefault();
 
-                if (a1 == null && a2 == null && a3==null && a4==null)
+                if (a1 == null && a2 == null)
                     return FollowType.NotFriends;
-                if (a3 != null && a2 != null && a2.status == false)
+                if ((a2 != null || a1 != null) && (a2?.status == false || a1?.status == false))
                 {
-                    return FollowType.NotFriends;
+                    if (a1 != null)
+                        return FollowType.Pending;
+                    else
+                        return FollowType.Wait;
                 }
-                if(a1 != null && a4 != null && a1.status == false)
-                {
-                    return FollowType.NotFriends;
-                }
-                if ((a1 != null && a4 != null && a1.status == true)|| (a3 != null && a2 != null && a2.status == true))
+
+                if (((a1 != null || a2 != null) && (a2?.status == true || a1?.status == true)))
                 {
                     return FollowType.Friends;
                 }
-                return FollowType.NotFriends; 
+                return FollowType.NotFriends;
 
 
             }
@@ -490,6 +488,7 @@ namespace Backend.Controllers
                         return new JsonResult(new { status = false, message = "one of the users not found" });
                         break;
                     case FollowType.NotFriends:
+                    case FollowType.Pending:
                         return new JsonResult(new { status = false, message = "you can't add a comment to a post that you can't see it" });
                         break;
                     case FollowType.Friends:
@@ -584,6 +583,7 @@ namespace Backend.Controllers
                         return new JsonResult(new { status = false, message = "one of the users not found" });
                         break;
                     case FollowType.NotFriends:
+                    case FollowType.Pending:
                         return new JsonResult(new { status = false, message = "you can't get a comment to a post that you can't see it" });
                         break;
                     case FollowType.Friends:

@@ -52,6 +52,32 @@ namespace Backend.Migrations
                     b.ToTable("Comments");
                 });
 
+            modelBuilder.Entity("Backend.Entities.Models.Friend", b =>
+                {
+                    b.Property<long>("id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<long>("User1")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("User2")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("status")
+                        .HasColumnType("bit");
+
+                    b.HasKey("id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Friend");
+                });
+
             modelBuilder.Entity("Backend.Entities.Models.ImgURL", b =>
                 {
                     b.Property<long>("Id")
@@ -135,9 +161,6 @@ namespace Backend.Migrations
                         .HasColumnType("bigint")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
-                    b.Property<long?>("MyPost")
-                        .HasColumnType("bigint");
-
                     b.Property<long?>("idPost")
                         .HasColumnType("bigint");
 
@@ -149,9 +172,9 @@ namespace Backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MyPost");
-
                     b.HasIndex("idPost");
+
+                    b.HasIndex("userId");
 
                     b.ToTable("PostId");
                 });
@@ -167,6 +190,9 @@ namespace Backend.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("FirstName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FullName")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Gender")
@@ -194,40 +220,6 @@ namespace Backend.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("Backend.Entities.Models.UserId", b =>
-                {
-                    b.Property<long>("id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<long?>("UserId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("UserId1")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("dateFollowing")
-                        .HasColumnType("int");
-
-                    b.Property<long>("followedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("following")
-                        .HasColumnType("bigint");
-
-                    b.Property<bool>("status")
-                        .HasColumnType("bit");
-
-                    b.HasKey("id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId1");
-
-                    b.ToTable("UserId");
-                });
-
             modelBuilder.Entity("Backend.Entities.Models.Comment", b =>
                 {
                     b.HasOne("Backend.Entities.Models.Comment", null)
@@ -241,6 +233,13 @@ namespace Backend.Migrations
                     b.HasOne("Backend.Entities.Models.Post", null)
                         .WithMany("PostComment")
                         .HasForeignKey("PostId");
+                });
+
+            modelBuilder.Entity("Backend.Entities.Models.Friend", b =>
+                {
+                    b.HasOne("Backend.Entities.Models.User", null)
+                        .WithMany("Friends")
+                        .HasForeignKey("UserId");
                 });
 
             modelBuilder.Entity("Backend.Entities.Models.ImgURL", b =>
@@ -261,11 +260,13 @@ namespace Backend.Migrations
                 {
                     b.HasOne("Backend.Entities.Models.User", null)
                         .WithMany("MyPosts")
-                        .HasForeignKey("MyPost");
+                        .HasForeignKey("idPost");
 
                     b.HasOne("Backend.Entities.Models.User", null)
                         .WithMany("PostLiked")
-                        .HasForeignKey("idPost");
+                        .HasForeignKey("userId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Backend.Entities.Models.User", b =>
@@ -273,17 +274,6 @@ namespace Backend.Migrations
                     b.HasOne("Backend.Entities.Models.ImgURL", "ProfilePic")
                         .WithMany()
                         .HasForeignKey("ProfilePicId");
-                });
-
-            modelBuilder.Entity("Backend.Entities.Models.UserId", b =>
-                {
-                    b.HasOne("Backend.Entities.Models.User", null)
-                        .WithMany("Followers")
-                        .HasForeignKey("UserId");
-
-                    b.HasOne("Backend.Entities.Models.User", null)
-                        .WithMany("Following")
-                        .HasForeignKey("UserId1");
                 });
 #pragma warning restore 612, 618
         }

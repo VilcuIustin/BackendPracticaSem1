@@ -11,6 +11,7 @@ namespace Backend.Entities.Models
         public long Id { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
+        public string FullName { get; set; }
         public string Email { get; set; }
         public string PasswordHash { get; set; }
         public string Gender { get; set; }
@@ -19,9 +20,10 @@ namespace Backend.Entities.Models
         public int newNotifications { get; set; }
         public virtual ICollection<Friend> Friends { get; set; }
         public virtual ICollection<Notification> notifications { get; set; }
-        [ForeignKey("idPost")]
+        //[ForeignKey("idPost")]
         public virtual ICollection<PostId> PostLiked { get; set; }
-        [ForeignKey("MyPost")]
+        //[ForeignKey("MyPost")]
+        [ForeignKey("idPost")]
         public virtual ICollection<PostId> MyPosts { get; set; }
 
 

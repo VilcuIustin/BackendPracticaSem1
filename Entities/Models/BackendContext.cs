@@ -18,10 +18,12 @@ namespace Backend.Entities
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<User>().HasMany(b => b.Followers)
-            .WithOne();
-            modelBuilder.Entity<User>().HasMany(b => b.Following)
-           .WithOne();
+            modelBuilder.Entity<User>()
+               .HasMany(b => b.MyPosts)
+               .WithOne();
+            modelBuilder.Entity<User>()
+              .HasMany(b => b.PostLiked)
+              .WithOne();
 
         }
 

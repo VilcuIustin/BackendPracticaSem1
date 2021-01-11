@@ -65,6 +65,7 @@ namespace Backend.Controllers
                     ProfilePic = new ImgURL { ImgUrl = link },
                     FirstName = registerPayload.FirstName,
                     LastName = registerPayload.LastName,
+                    FullName= registerPayload.FirstName + " "+ registerPayload.LastName,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerPayload.Password),
                     Role = "SimpleUser",
                 };

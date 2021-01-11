@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using static Backend.Enums;
 
 namespace Backend.Controllers
 {
@@ -30,7 +31,7 @@ namespace Backend.Controllers
 
         [HttpGet("getfollowers/{id}")]              //0 - the same user.     1 - not followed   2 - your request is in pending 
                                                     //  3 - you have a request in pending 4 - fallowed -1 - not followed
-        public async Task<ActionResult<int>> GetFallowers([FromRoute] long id)
+        public async Task<ActionResult<Enums.FollowType>> GetFallowers([FromRoute] long id)
         {
             var currentUser = HttpContext.User;
             if (currentUser.HasClaim(claims => claims.Type == "Id"))
@@ -42,79 +43,42 @@ namespace Backend.Controllers
 
                 if (myId == id)
                 {
-                    return 0;
+                    return FollowType.Same;
                 }
-                User me;
-                User otherusr;
                 try
                 {
-                    me = _db.Users.Include(user => user.Friends)
-                        .Where(user => user.Id == myId).Single();
-                  
-                }
-                catch (ArgumentNullException)
-                {
-                    return BadRequest("User not found");
+                    User user1 = _db.Users.Include(user => user.Friends)
+                      .Where(user => user.Id == myId).Single();
+                    User user2 = _db.Users.Where(user => user.Id == id).Single();
+                    Friend? a1 = null;
+                    Friend? a2 = null;
 
-                }
+                    a1 = user1.Friends.Where(user => user.User1 == myId && user.User2 == id).FirstOrDefault();
+                    a2 = user1.Friends.Where(user => user.User1 == id && user.User2 == myId).FirstOrDefault();
 
-                Friend following = null;
-                Friend follower = null;
-                Friend following2 = null;
-                Friend follower2 = null;
-                try
-                {
-                    following = me.Friends.Where(user => user.following == id).Single();
-                    follower = otherusr.Followers.Where(user => user.followedBy == myId).Single();
-                    if (following != null && follower != null)
+                    if (a1 == null && a2 == null)
+                        return FollowType.NotFriends;
+                    if ((a2 != null || a1 != null) && (a2?.status == false || a1?.status==false))
                     {
-                        if (following.followedBy == myId)
-                        {
-                            if (following.status == true)
-                                return 4;
-                            return 2;
-                        }
-
-                        else if (following.followedBy == id)
-                        {
-                            if (following.status == true)
-                                return 4;
-                            return 3;
-                        }
-                        return 1;
+                        if(a1!=null)
+                            return FollowType.Pending;
+                        else
+                            return FollowType.Wait;
                     }
+
+                    if (((a1 != null || a2 != null) && (a2?.status == true || a1?.status == true)))
+                    {
+                        return FollowType.Friends;
+                    }
+                    return FollowType.NotFriends;
+
+
                 }
                 catch (Exception)
-                { }
-                try
                 {
-                    follower2 = me.Followers.Where(user => user.followedBy == id).Single();
-                    following2 = otherusr.Following.Where(user => user.following == myId).Single();
-                    if (following2 != null && follower2 != null)
-                    {
-                        if (following2.followedBy == myId)
-                        {
-                            if (following2.status == true)
-                                return 4;
-                            return 2;
-                        }
 
-                        else if (following2.followedBy == id)
-                        {
-                            if (following2.status == true)
-                                return 4;
-                            return 3;
-                        }
-
-
-                    }
-                    return 1;
+                    return FollowType.UserNotFound;
                 }
-                catch (Exception)
-                { }
-
-                return 1;
-
             }
             return BadRequest("Your token is invalid");
 
@@ -158,7 +122,7 @@ namespace Backend.Controllers
                     });
                     userForFollow.newNotifications++;
 
-                    userForFollow.notifications.ToList().Add(new Notification
+                    userForFollow.notifications.Add(new Notification
                     {
                         message = "sended you a follow request",
                         idReceiver = userForFollow.Id,
@@ -216,18 +180,30 @@ namespace Backend.Controllers
 
                 Friend following = null;
                 Friend follower = null;
-                Friend following2 = null;
-                Friend follower2 = null;
+                
                 try
                 {
-                    following = me.Friends.Where(user => user.User1 == id && user.User2==myId).Single();
-                    follower = me.Friends.Where(user => user.User1 == myId && user.User2 == id).Single();
-                    me.Following.Remove(following);
-                    otherusr.Followers.Remove(follower);
-                    follower2 = me.Followers.Where(user => user.followedBy == id).Single();
-                    following2 = otherusr.Following.Where(user => user.following == myId).Single();
-                    me.Followers.Remove(follower2);
-                    otherusr.Following.Remove(following2);
+                    following = me.Friends.Where(user => user.User1 == id && user.User2==myId).FirstOrDefault();
+                    follower = me.Friends.Where(user => user.User1 == myId && user.User2 == id).FirstOrDefault();
+                    if (follower != null)
+                    {
+                        me.Friends.Remove(follower);
+                        following = otherusr.Friends.Where(user => user.User1 == myId && user.User2 == id).FirstOrDefault();
+                        otherusr.Friends.Remove(following);
+                        _db.Remove(follower);
+                        _db.Remove(following);
+                    }
+                    else
+                    {
+                        follower = otherusr.Friends.Where(user => user.User1 == id && user.User2 == myId).FirstOrDefault();
+                        me.Friends.Remove(following);
+                        otherusr.Friends.Remove(follower);
+                        _db.Remove(following);
+                        _db.Remove(follower);
+                    }
+                   
+                  
+                    
                     _db.SaveChanges();
                     
                     return new JsonResult(new { status = "true", message = " success" });
@@ -261,11 +237,9 @@ namespace Backend.Controllers
                 User otherusr;
                 try
                 {
-                    me = _db.Users.Include(user => user.Following)
-                        .Include(user => user.Followers)
+                    me = _db.Users.Include(user => user.Friends)
                         .Where(user => user.Id == myId).Single();
-                    otherusr = _db.Users.Include(user => user.Followers)
-                        .Include(user => user.Following)
+                    otherusr = _db.Users.Include(user => user.Friends)
                         .Include(user => user.notifications)
                         .Where(user => user.Id == id).Single();
                 }
@@ -277,56 +251,15 @@ namespace Backend.Controllers
 
                 Friend following = null;
                 Friend follower = null;
-                Friend following2 = null;
-                Friend follower2 = null;
+              
                 try
                 {
-                    following = me.Following.Where(user => user.following == id).Single();
-                    follower = otherusr.Followers.Where(user => user.followedBy == myId).Single();
+                    following = me.Friends.Where(user => user.User1 == id).Single();
+                    follower = otherusr.Friends.Where(user => user.User2 == myId).Single();
                     following.status = true;
                     follower.status = true;
-                    me.Followers.Add(new Friend
-                    {
-                        followedBy = id,
-                        following = myId,
-                        status = true
-                    });
-
-                    otherusr.Following.Add(new Friend
-                    {
-                        followedBy = myId,
-                        following = id,
-                        status = true
-                    });
-
 
                     _db.SaveChanges();
-                    return new JsonResult(new { status = "true", message = " success" });
-                }
-                catch (Exception)
-                { }
-                try
-                {
-                    follower2 = me.Followers.Where(user => user.followedBy == id).Single();
-                    following2 = otherusr.Following.Where(user => user.following == myId).Single();
-                    following2.status = true;
-                    follower2.status = true;
-                    me.Following.Add(new Friend
-                    {
-                        followedBy = myId,
-                        following = id,
-                        status = true
-                    });
-
-                    otherusr.Followers.Add(new Friend
-                    {
-                        followedBy = myId,
-                        following = id,
-                        status = true
-                    });
-
-
-
                     otherusr.notifications.ToList().Insert(0, new Notification
                     {
                         message = "sended you a follow request",
@@ -335,10 +268,6 @@ namespace Backend.Controllers
 
                     });
                     otherusr.newNotifications++;
-
-
-
-                    _db.SaveChanges();
                     return new JsonResult(new { status = "true", message = " success" });
                 }
                 catch (Exception)

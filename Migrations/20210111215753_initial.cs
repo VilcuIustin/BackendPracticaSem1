@@ -1,9 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
-using System;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Backend.Migrations
 {
-    public partial class mig : Migration
+    public partial class initial : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -16,7 +16,8 @@ namespace Backend.Migrations
                     IdUser = table.Column<int>(nullable: false),
                     Text = table.Column<string>(nullable: true),
                     DTPost = table.Column<DateTime>(nullable: false),
-                    NrLikes = table.Column<int>(nullable: false)
+                    NrLikes = table.Column<int>(nullable: false),
+                    nrComm = table.Column<long>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -49,7 +50,7 @@ namespace Backend.Migrations
                 {
                     Id = table.Column<long>(nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<int>(nullable: false),
+                    UserId = table.Column<long>(nullable: false),
                     Message = table.Column<string>(nullable: true),
                     ImageId = table.Column<long>(nullable: true),
                     CommentId = table.Column<long>(nullable: true),
@@ -86,11 +87,13 @@ namespace Backend.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     FirstName = table.Column<string>(nullable: true),
                     LastName = table.Column<string>(nullable: true),
+                    FullName = table.Column<string>(nullable: true),
                     Email = table.Column<string>(nullable: true),
                     PasswordHash = table.Column<string>(nullable: true),
                     Gender = table.Column<string>(nullable: true),
                     Role = table.Column<string>(nullable: true),
-                    ProfilePicId = table.Column<long>(nullable: true)
+                    ProfilePicId = table.Column<long>(nullable: true),
+                    newNotifications = table.Column<int>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -104,6 +107,51 @@ namespace Backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Friend",
+                columns: table => new
+                {
+                    id = table.Column<long>(nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    User1 = table.Column<long>(nullable: false),
+                    User2 = table.Column<long>(nullable: false),
+                    status = table.Column<bool>(nullable: false),
+                    UserId = table.Column<long>(nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Friend", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_Friend_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Notification",
+                columns: table => new
+                {
+                    id = table.Column<long>(nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    message = table.Column<string>(nullable: true),
+                    idReceiver = table.Column<long>(nullable: false),
+                    idSender = table.Column<long>(nullable: false),
+                    status = table.Column<bool>(nullable: false),
+                    UserId = table.Column<long>(nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Notification", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_Notification_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "PostId",
                 columns: table => new
                 {
@@ -111,53 +159,23 @@ namespace Backend.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     postId = table.Column<long>(nullable: false),
                     userId = table.Column<long>(nullable: false),
-                    MyPost = table.Column<long>(nullable: true),
                     idPost = table.Column<long>(nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_PostId", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_PostId_Users_MyPost",
-                        column: x => x.MyPost,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
                         name: "FK_PostId_Users_idPost",
                         column: x => x.idPost,
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "UserId",
-                columns: table => new
-                {
-                    id = table.Column<long>(nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    followedBy = table.Column<long>(nullable: false),
-                    following = table.Column<long>(nullable: false),
-                    dateFollowing = table.Column<int>(nullable: false),
-                    UserId = table.Column<long>(nullable: true),
-                    UserId1 = table.Column<long>(nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_UserId", x => x.id);
                     table.ForeignKey(
-                        name: "FK_UserId_Users_UserId",
-                        column: x => x.UserId,
+                        name: "FK_PostId_Users_userId",
+                        column: x => x.userId,
                         principalTable: "Users",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_UserId_Users_UserId1",
-                        column: x => x.UserId1,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
@@ -176,14 +194,19 @@ namespace Backend.Migrations
                 column: "PostId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Friend_UserId",
+                table: "Friend",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ImgURL_PostId",
                 table: "ImgURL",
                 column: "PostId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_PostId_MyPost",
-                table: "PostId",
-                column: "MyPost");
+                name: "IX_Notification_UserId",
+                table: "Notification",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PostId_idPost",
@@ -191,14 +214,9 @@ namespace Backend.Migrations
                 column: "idPost");
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserId_UserId",
-                table: "UserId",
-                column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_UserId_UserId1",
-                table: "UserId",
-                column: "UserId1");
+                name: "IX_PostId_userId",
+                table: "PostId",
+                column: "userId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_ProfilePicId",
@@ -212,10 +230,13 @@ namespace Backend.Migrations
                 name: "Comments");
 
             migrationBuilder.DropTable(
-                name: "PostId");
+                name: "Friend");
 
             migrationBuilder.DropTable(
-                name: "UserId");
+                name: "Notification");
+
+            migrationBuilder.DropTable(
+                name: "PostId");
 
             migrationBuilder.DropTable(
                 name: "Users");
