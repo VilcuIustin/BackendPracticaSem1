@@ -130,14 +130,42 @@ namespace Backend.Controllers
 
         }
 
-       /* [HttpGet("search")]
+        [HttpGet("search")]
         public async Task<ActionResult> search(string name, int pageSize, int pageNumber)
         {
+            var curentUser = HttpContext.User;
+            if (curentUser.HasClaim(claim => claim.Type == "Id"))
+            {
+                long idMe;
+
+                bool rez = long.TryParse(curentUser.FindFirst(claim => claim.Type == "Id").Value, out idMe);
+                if (!rez)
+                    return new JsonResult(new { status = "false", message = "Can't parse the id" });
 
 
+                var acc = _db.Users.Include(user => user.ProfilePic).Where(user => user.FullName.Contains(name)).Skip((pageNumber - 1) * pageSize).Take(pageSize);
+                List<ProfileModel> profiles = new List<ProfileModel>();
+                profiles = acc.Select(c => new ProfileModel
+                {
+                    Id = c.Id,
+                    FullName = c.FullName,
+                    ImgUrl = "https://localhost:44355/images/" + c.ProfilePic.ImgUrl,
 
+                }).ToList();
+                foreach (var profile in profiles)
+                {
+                    //FriendStatus.Add(await areFriends(idMe, profile.Id));
+                    var status=await areFriends(idMe, profile.Id);
+                    profile.friendStatus = status;
+                }
+                
+                List<Enums.FollowType> FriendStatus = new List<Enums.FollowType>();
+                
+                return new JsonResult(new { status = true, result = profiles });
+            }
+            return new JsonResult(new { status = false, result = "id not found" });
         }
-*/
+
 
 
         #region Post
@@ -398,7 +426,7 @@ namespace Backend.Controllers
         {
             if (id1 == id2)
             {
-                return FollowType.Friends;
+                return FollowType.Same;
             }
             try
             {
