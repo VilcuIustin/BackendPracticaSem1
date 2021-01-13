@@ -422,6 +422,13 @@ namespace Backend.Controllers
 
         }
 
+        public async Task Like()
+        {
+           // return new NotImplementedException();
+        }
+
+
+
         public async Task<Enums.FollowType> areFriends(long id1, long id2)
         {
             if (id1 == id2)
