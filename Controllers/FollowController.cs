@@ -53,8 +53,8 @@ namespace Backend.Controllers
                     Friend? a1 = null;
                     Friend? a2 = null;
 
-                    a1 = user1.Friends.Where(user => user.User1 == myId && user.User2 == id).FirstOrDefault();
-                    a2 = user1.Friends.Where(user => user.User1 == id && user.User2 == myId).FirstOrDefault();
+                    a1 = user1.Friends.Where(user => user.User1.Id == myId && user.User2.Id == id).FirstOrDefault();
+                    a2 = user1.Friends.Where(user => user.User1.Id == id && user.User2.Id == myId).FirstOrDefault();
 
                     if (a1 == null && a2 == null)
                         return FollowType.NotFriends;
@@ -101,7 +101,7 @@ namespace Backend.Controllers
                 {
                     var me = _db.Users.Include(user => user.Friends).Where(user => user.Id == idUser).Single();
                     //var follow1 = me.Following.FirstOrDefault(follow => follow.fo == id);
-                    var follow2 = me.Friends.FirstOrDefault(follow => follow.User1 == id);
+                    var follow2 = me.Friends.FirstOrDefault(follow => follow.User1.Id == id);
                     if (follow2 != null)
                     {
                         return (ActionResult)await acceptFollow(id);
@@ -110,14 +110,14 @@ namespace Backend.Controllers
 
                     me.Friends.Add(new Friend
                     {
-                        User1 = idUser,
-                        User2 = id,
+                        User1 = me,
+                        User2 = userForFollow,
                         status = false
                     });
                     userForFollow.Friends.Add(new Friend
                     {
-                        User1 = idUser,
-                        User2 = id,
+                        User1 = me,
+                        User2 = userForFollow,
                         status = false
                     });
                     userForFollow.newNotifications++;
@@ -183,19 +183,19 @@ namespace Backend.Controllers
                 
                 try
                 {
-                    following = me.Friends.Where(user => user.User1 == id && user.User2==myId).FirstOrDefault();
-                    follower = me.Friends.Where(user => user.User1 == myId && user.User2 == id).FirstOrDefault();
+                    following = me.Friends.Where(user => user.User1.Id == id && user.User2.Id == myId).FirstOrDefault();
+                    follower = me.Friends.Where(user => user.User1.Id == myId && user.User2.Id == id).FirstOrDefault();
                     if (follower != null)
                     {
                         me.Friends.Remove(follower);
-                        following = otherusr.Friends.Where(user => user.User1 == myId && user.User2 == id).FirstOrDefault();
+                        following = otherusr.Friends.Where(user => user.User1.Id == myId && user.User2.Id == id).FirstOrDefault();
                         otherusr.Friends.Remove(following);
                         _db.Remove(follower);
                         _db.Remove(following);
                     }
                     else
                     {
-                        follower = otherusr.Friends.Where(user => user.User1 == id && user.User2 == myId).FirstOrDefault();
+                        follower = otherusr.Friends.Where(user => user.User1.Id == id && user.User2.Id == myId).FirstOrDefault();
                         me.Friends.Remove(following);
                         otherusr.Friends.Remove(follower);
                         _db.Remove(following);
@@ -254,8 +254,8 @@ namespace Backend.Controllers
               
                 try
                 {
-                    following = me.Friends.Where(user => user.User1 == id).Single();
-                    follower = otherusr.Friends.Where(user => user.User2 == myId).Single();
+                    following = me.Friends.Where(user => user.User1.Id == id).Single();
+                    follower = otherusr.Friends.Where(user => user.User2.Id == myId).Single();
                     following.status = true;
                     follower.status = true;
 

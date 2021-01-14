@@ -392,13 +392,25 @@ namespace Backend.Controllers
                     List<Post> posts = new List<Post>();
 
                     var aux = user.MyPosts.Reverse().Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+                    List<bool> liked = new List<bool>();
                     foreach (var ids in aux)
                     {
-                        Post p = _db.Posts.Where(post => post.Id == ids.postId).Include(post => post.Images).Single();
+                      
+                        var po = _db.Posts.Where(post => post.Id == ids.postId).Include(post=> post.UserLiked).Include(post => post.Images);
+                        Post p = po.Single();
                         posts.Add(p);
+                        
+                        if ((p.UserLiked.Where(usr=> usr.Id== idUser).FirstOrDefault() ) != null)
+                        {
+                            liked.Add(true);
+                        }
+                        else
+                        {
+                            liked.Add(false);
+                        }
                     }
 
-                    return new JsonResult(new { status = "true", posts = posts, nrPost = user.MyPosts.Count() });
+                    return new JsonResult(new { status = "true", posts = posts, nrPost = user.MyPosts.Count(), liked= liked });
 
                 }
                 var friends = await areFriends(user.Id, user1.Id);
@@ -409,8 +421,23 @@ namespace Backend.Controllers
                 else
                 {
                     List<Post> posts = new List<Post>();
+                    List<bool> liked = new List<bool>();
                     foreach (var ids in user.MyPosts.Reverse().Skip((pageNumber - 1) * pageSize).Take(pageSize))
-                        posts.Add(_db.Posts.Where(post => post.Id == ids.postId).Include(post => post.Images).Single());
+                    {
+                        var aux = _db.Posts.Where(post => post.Id == ids.postId).Include(post => post.Images);
+                        var post= aux.Single();
+                        posts.Add(post);
+                        if(aux.Include(post => post.UserLiked).Where(usr => usr.IdUser == idUser).FirstOrDefault()!=null)
+                        {
+                            liked.Add(true);
+                        }
+                        else
+                        {
+                            liked.Add(false);
+                        }
+
+                    }
+                        
 
                     return new JsonResult(new { status = "true", posts = posts, nrPost = user.MyPosts.Count() });
 
@@ -422,9 +449,52 @@ namespace Backend.Controllers
 
         }
 
-        public async Task Like()
+        [HttpPatch("like")]
+        public async Task<ActionResult> Like([FromBody]IdPayload idPost)
         {
-            Console.WriteLine("fiwejrgfoierwhgier");
+            long id;
+            if (HttpContext.User.HasClaim(claim => claim.Type == "Id"))
+            {
+                if (!long.TryParse(HttpContext.User.Claims.First(claim => claim.Type == "Id").Value, out id))
+                {
+                    return new JsonResult(new { status = false, message = "Can't parse id" });
+                }
+                var userPost = _db.Posts.Where(post => post.Id == idPost.id).Include(post => post.UserLiked).FirstOrDefault();
+                if (userPost == null)
+                {
+                    return new JsonResult(new { status = false, message = "Can't find this post" });
+                }
+
+                var friendStatus = await areFriends(id, userPost.IdUser);
+                switch (friendStatus)
+                {
+                    case FollowType.UserNotFound:
+
+                        return new JsonResult(new { status = false, message = "one of the users not found" });
+                    case FollowType.NotFriends:
+                    case FollowType.Pending:
+                        return new JsonResult(new { status = false, message = "you can't add a like to a post that you can't see it" });
+                    case FollowType.Friends:
+                    case FollowType.Same:
+                        var userFound = userPost.UserLiked.Where(user => user.Id == id).SingleOrDefault();
+                        var me = _db.Users.Where(usr => usr.Id == id).SingleOrDefault();
+                        if (userFound == null)
+                        {
+                            userPost.UserLiked.Add(me);
+                            userPost.NrLikes++;
+                        }
+                        else
+                        {
+                            userPost.UserLiked.Remove(me);
+                            userPost.NrLikes--;
+                        }
+                        break;
+                }
+                _db.SaveChanges();
+                return Ok();
+            }
+            return new JsonResult(new { status = false, message = "bad token" });
+
         }
 
 
@@ -443,8 +513,8 @@ namespace Backend.Controllers
                 Friend? a1 = null;
                 Friend? a2 = null;
 
-                a1 = user1.Friends.Where(user => user.User1 == id1 && user.User2 == id2).FirstOrDefault();
-                a2 = user1.Friends.Where(user => user.User1 == id2 && user.User2 == id1).FirstOrDefault();
+                a1 = user1.Friends.Where(user => user.User1.Id == id1 && user.User2.Id == id2).FirstOrDefault();
+                a2 = user1.Friends.Where(user => user.User1.Id == id2 && user.User2.Id == id1).FirstOrDefault();
 
                 if (a1 == null && a2 == null)
                     return FollowType.NotFriends;
