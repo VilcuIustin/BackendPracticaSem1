@@ -413,7 +413,7 @@ namespace Backend.Controllers
                     return new JsonResult(new { status = "true", posts = posts, nrPost = user.MyPosts.Count(), liked= liked });
 
                 }
-                var friends = await areFriends(user.Id, user1.Id);
+                var friends = await areFriends(user1.Id, user.Id);
                 if (friends == FollowType.NotFriends || friends==FollowType.Pending || friends == FollowType.Wait)
                 {
                     return new JsonResult(new { status = "false", message = "This profile is private. " });
@@ -509,29 +509,28 @@ namespace Backend.Controllers
             {
                 User user1 = _db.Users.Include(user => user.Friends)
                   .Where(user => user.Id == id1).Single();
-                User user2 = _db.Users.Where(user => user.Id == id2).Single();
+                User user2 = _db.Users.Include(user => user.Friends)
+                    .Where(user => user.Id == id2).Single();
+                
                 Friend? a1 = null;
-                Friend? a2 = null;
 
-                a1 = user1.Friends.Where(user => user.User1.Id == id1 && user.User2.Id == id2).FirstOrDefault();
-                a2 = user1.Friends.Where(user => user.User1.Id == id2 && user.User2.Id == id1).FirstOrDefault();
-
-                if (a1 == null && a2 == null)
-                    return FollowType.NotFriends;
-                if ((a2 != null || a1 != null) && (a2?.status == false || a1?.status == false))
+             
+                a1 = user1.Friends.Where(user => user.User1.Id == id2 && user.User2.Id == id1).FirstOrDefault();
+                if(a1!=null && a1?.status==false )
                 {
-                    if (a1 != null)
+                    if (a1.sended == true)
+                    {
                         return FollowType.Pending;
+                    }
                     else
                         return FollowType.Wait;
                 }
-
-                if (((a1 != null || a2 != null) && (a2?.status == true || a1?.status == true)))
+                if(a1 != null && a1?.status == true)
                 {
                     return FollowType.Friends;
                 }
-                return FollowType.NotFriends;
 
+                 return FollowType.NotFriends;
 
             }
             catch (Exception)
@@ -679,7 +678,7 @@ namespace Backend.Controllers
                 {
                     return new JsonResult(new { status = false, message = "post not found" });
                 }
-                var rez = await areFriends(post.IdUser, id);
+                var rez = await areFriends(id,post.IdUser );
 
 
                 switch (rez)

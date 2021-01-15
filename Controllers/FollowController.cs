@@ -56,23 +56,21 @@ namespace Backend.Controllers
 
                     //a1 = user1.Friends.Where(user => user.User1.Id == myId && user.User2.Id == id).FirstOrDefault();
                     //a2 = user1.Friends.Where(user => user.User1.Id == id && user.User2.Id == myId).FirstOrDefault();
-                    a1 = user1.Friends.Where(user => user.User1.Id == myId && user.User2.Id == id).FirstOrDefault();
-                    a2 = user1.Friends.Where(user => user.User1.Id == id && user.User2.Id == myId).FirstOrDefault();
-
-                    if (a1 == null && a2 == null)
-                        return FollowType.NotFriends;
-                    if ((a2 != null || a1 != null) && (a2?.status == false || a1?.status==false))
+                    a1 = user1.Friends.Where(user => user.User1.Id == id && user.User2.Id == myId).FirstOrDefault();
+                    if (a1 != null && a1?.status == false)
                     {
-                        if(a1!=null)
+                        if (a1.sended == true)
+                        {
                             return FollowType.Pending;
+                        }
                         else
                             return FollowType.Wait;
                     }
-
-                    if (((a1 != null || a2 != null) && (a2?.status == true || a1?.status == true)))
+                    if (a1 != null && a1?.status == true)
                     {
                         return FollowType.Friends;
                     }
+
                     return FollowType.NotFriends;
 
 
@@ -110,19 +108,23 @@ namespace Backend.Controllers
                         return (ActionResult)await acceptFollow(id);
                     }
                     var userForFollow = _db.Users.Include(user => user.Friends).Include(user => user.notifications).Where(user => user.Id == id).Single();
-                  
+
                     me.Friends.Add(new Friend
                     {
-                        User1 = me,
-                        User2 = userForFollow,
-                        status = false
-                    });
+                        User1 = userForFollow,
+                        User2 = me,
+                        status = false,
+                        sended = true,
+
+                    }) ;
                     userForFollow.Friends.Add(new Friend
                     {
                         User1 = me,
                         User2 = userForFollow,
-                        status = false
-                    });
+                        status = false,
+                        sended = false,
+
+                    }) ;
                     userForFollow.newNotifications++;
 
                     userForFollow.notifications.Add(new Notification
@@ -187,26 +189,11 @@ namespace Backend.Controllers
                 try
                 {
                     following = me.Friends.Where(user => user.User1.Id == id && user.User2.Id == myId).FirstOrDefault();
-                    follower = me.Friends.Where(user => user.User1.Id == myId && user.User2.Id == id).FirstOrDefault();
-                    if (follower != null)
-                    {
-                        me.Friends.Remove(follower);
-                        following = otherusr.Friends.Where(user => user.User1.Id == myId && user.User2.Id == id).FirstOrDefault();
-                        otherusr.Friends.Remove(following);
-                        _db.Remove(follower);
-                        _db.Remove(following);
-                    }
-                    else
-                    {
-                        follower = otherusr.Friends.Where(user => user.User1.Id == id && user.User2.Id == myId).FirstOrDefault();
-                        me.Friends.Remove(following);
-                        otherusr.Friends.Remove(follower);
-                        _db.Remove(following);
-                        _db.Remove(follower);
-                    }
-                   
-                  
-                    
+                    follower = otherusr.Friends.Where(user => user.User1.Id == myId && user.User2.Id == id).FirstOrDefault();
+                    me.Friends.Remove(following);
+                    otherusr.Friends.Remove(follower);
+                    _db.Remove(follower);
+                    _db.Remove(following);
                     _db.SaveChanges();
                     
                     return new JsonResult(new { status = "true", message = " success" });
@@ -257,8 +244,11 @@ namespace Backend.Controllers
               
                 try
                 {
-                    following = me.Friends.Where(user => user.User1.Id == id).Single();
-                    follower = otherusr.Friends.Where(user => user.User2.Id == myId).Single();
+                    // following = me.Friends.Where(user => user.User1.Id == id).Single();
+                    //follower = otherusr.Friends.Where(user => user.User2.Id == myId).Single();
+                    following = me.Friends.Where(user => user.User1.Id == id && user.User2.Id == myId).Single();
+                    follower = otherusr.Friends.Where(user => user.User1.Id == myId && user.User2.Id == id).Single();
+
                     following.status = true;
                     follower.status = true;
 
@@ -295,6 +285,14 @@ namespace Backend.Controllers
             }
         }
 
+        [HttpGet("test")]
+        public async Task<ActionResult> getFriends(long id)
+        {
+            var usr=_db.Users.Include(user => user.Friends).ThenInclude(usr=>usr.User1).Where(user => user.Id == id).FirstOrDefault();
+            var test = usr.Friends.Where(user => user.User1.Id != id ).ToList();
+            return new JsonResult(new { mesaj=test });
+
+        }
 
 
     }

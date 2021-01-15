@@ -4,14 +4,16 @@ using Backend.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Backend.Migrations
 {
     [DbContext(typeof(BackendContext))]
-    partial class BackendContextModelSnapshot : ModelSnapshot
+    [Migration("20210115085125_6")]
+    partial class _6
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -68,8 +70,8 @@ namespace Backend.Migrations
                     b.Property<long?>("UserId")
                         .HasColumnType("bigint");
 
-                    b.Property<bool>("sended")
-                        .HasColumnType("bit");
+                    b.Property<string>("fullname")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("status")
                         .HasColumnType("bit");
