@@ -4,14 +4,16 @@ using Backend.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Backend.Migrations
 {
     [DbContext(typeof(BackendContext))]
-    partial class BackendContextModelSnapshot : ModelSnapshot
+    [Migration("20210114215624_mig1")]
+    partial class mig1
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -65,14 +67,20 @@ namespace Backend.Migrations
                     b.Property<long?>("User2Id")
                         .HasColumnType("bigint");
 
+                    b.Property<long?>("UserId")
+                        .HasColumnType("bigint");
+
                     b.Property<bool>("status")
                         .HasColumnType("bit");
 
                     b.HasKey("id");
 
-                    b.HasIndex("User1id");
+                    b.HasIndex("User1id")
+                        .IsUnique();
 
                     b.HasIndex("User2Id");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Friend");
                 });
@@ -242,14 +250,18 @@ namespace Backend.Migrations
             modelBuilder.Entity("Backend.Entities.Models.Friend", b =>
                 {
                     b.HasOne("Backend.Entities.Models.User", "User1")
-                        .WithMany("Friends")
-                        .HasForeignKey("User1id")
+                        .WithOne()
+                        .HasForeignKey("Backend.Entities.Models.Friend", "User1id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Backend.Entities.Models.User", "User2")
                         .WithMany()
                         .HasForeignKey("User2Id");
+
+                    b.HasOne("Backend.Entities.Models.User", null)
+                        .WithMany("Friends")
+                        .HasForeignKey("UserId");
                 });
 
             modelBuilder.Entity("Backend.Entities.Models.ImgURL", b =>

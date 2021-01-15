@@ -7,7 +7,7 @@ namespace Backend.Entities.Models
     {
         [Key]
         public long id { get; set; }
-       
+        public long User1id { get; set; }
         public User User1 { get; set; }        
        
         public User User2 { get; set; }  

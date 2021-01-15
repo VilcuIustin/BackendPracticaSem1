@@ -10,8 +10,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Backend.Migrations
 {
     [DbContext(typeof(BackendContext))]
-    [Migration("20210111215753_initial")]
-    partial class initial
+    [Migration("20210115071612_mig4")]
+    partial class mig4
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -61,13 +61,10 @@ namespace Backend.Migrations
                         .HasColumnType("bigint")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
-                    b.Property<long>("User1")
+                    b.Property<long>("User1id")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("User2")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("UserId")
+                    b.Property<long?>("User2Id")
                         .HasColumnType("bigint");
 
                     b.Property<bool>("status")
@@ -75,7 +72,9 @@ namespace Backend.Migrations
 
                     b.HasKey("id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("User1id");
+
+                    b.HasIndex("User2Id");
 
                     b.ToTable("Friend");
                 });
@@ -206,6 +205,9 @@ namespace Backend.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<long?>("PostId")
+                        .HasColumnType("bigint");
+
                     b.Property<long?>("ProfilePicId")
                         .HasColumnType("bigint");
 
@@ -216,6 +218,8 @@ namespace Backend.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PostId");
 
                     b.HasIndex("ProfilePicId");
 
@@ -239,9 +243,15 @@ namespace Backend.Migrations
 
             modelBuilder.Entity("Backend.Entities.Models.Friend", b =>
                 {
-                    b.HasOne("Backend.Entities.Models.User", null)
+                    b.HasOne("Backend.Entities.Models.User", "User1")
                         .WithMany("Friends")
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("User1id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Entities.Models.User", "User2")
+                        .WithMany()
+                        .HasForeignKey("User2Id");
                 });
 
             modelBuilder.Entity("Backend.Entities.Models.ImgURL", b =>
@@ -273,6 +283,10 @@ namespace Backend.Migrations
 
             modelBuilder.Entity("Backend.Entities.Models.User", b =>
                 {
+                    b.HasOne("Backend.Entities.Models.Post", null)
+                        .WithMany("UserLiked")
+                        .HasForeignKey("PostId");
+
                     b.HasOne("Backend.Entities.Models.ImgURL", "ProfilePic")
                         .WithMany()
                         .HasForeignKey("ProfilePicId");

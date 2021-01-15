@@ -10,8 +10,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Backend.Migrations
 {
     [DbContext(typeof(BackendContext))]
-    [Migration("20210114071403_mig3")]
-    partial class mig3
+    [Migration("20210115070901_mig2")]
+    partial class mig2
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -61,10 +61,10 @@ namespace Backend.Migrations
                         .HasColumnType("bigint")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
-                    b.Property<long>("User1")
+                    b.Property<long>("User1id")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("User2")
+                    b.Property<long?>("User2Id")
                         .HasColumnType("bigint");
 
                     b.Property<long?>("UserId")
@@ -74,6 +74,10 @@ namespace Backend.Migrations
                         .HasColumnType("bit");
 
                     b.HasKey("id");
+
+                    b.HasIndex("User1id");
+
+                    b.HasIndex("User2Id");
 
                     b.HasIndex("UserId");
 
@@ -244,6 +248,16 @@ namespace Backend.Migrations
 
             modelBuilder.Entity("Backend.Entities.Models.Friend", b =>
                 {
+                    b.HasOne("Backend.Entities.Models.User", "User1")
+                        .WithMany()
+                        .HasForeignKey("User1id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Entities.Models.User", "User2")
+                        .WithMany()
+                        .HasForeignKey("User2Id");
+
                     b.HasOne("Backend.Entities.Models.User", null)
                         .WithMany("Friends")
                         .HasForeignKey("UserId");

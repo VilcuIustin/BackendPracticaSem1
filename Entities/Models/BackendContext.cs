@@ -24,6 +24,12 @@ namespace Backend.Entities
             modelBuilder.Entity<User>()
               .HasMany(b => b.PostLiked)
               .WithOne();
+            modelBuilder.Entity<User>()
+              .HasMany(b => b.Friends)
+              .WithOne();
+           /* modelBuilder.Entity<Friend>()
+              .HasOne(b => b.User1)
+              .WithMany();*/
 
         }
 

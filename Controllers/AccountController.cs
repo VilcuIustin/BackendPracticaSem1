@@ -55,10 +55,19 @@ namespace Backend.Controllers
                     return new JsonResult(new { status = "false", message = "An account with this email already exists " });
                 }
                 string link;
+                string gender;
                 if (registerPayload.gender == "female")
+                {
                     link = "female.jpg";
+                    gender = "female";
+                }
+
                 else
+                {
                     link = "man.jpg";
+                    gender = "male";
+                }
+                   
                 var userToCreate = new User
                 {
                     Email = registerPayload.Email,
@@ -66,6 +75,7 @@ namespace Backend.Controllers
                     FirstName = registerPayload.FirstName,
                     LastName = registerPayload.LastName,
                     FullName= registerPayload.FirstName + " "+ registerPayload.LastName,
+                    Gender= gender,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerPayload.Password),
                     Role = "SimpleUser",
                 };

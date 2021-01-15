@@ -49,10 +49,13 @@ namespace Backend.Controllers
                 {
                     User user1 = _db.Users.Include(user => user.Friends)
                       .Where(user => user.Id == myId).Single();
-                    User user2 = _db.Users.Where(user => user.Id == id).Single();
+                    User user2 = _db.Users.Include(user => user.Friends)
+                        .Where(user => user.Id == id).Single();
                     Friend? a1 = null;
                     Friend? a2 = null;
 
+                    //a1 = user1.Friends.Where(user => user.User1.Id == myId && user.User2.Id == id).FirstOrDefault();
+                    //a2 = user1.Friends.Where(user => user.User1.Id == id && user.User2.Id == myId).FirstOrDefault();
                     a1 = user1.Friends.Where(user => user.User1.Id == myId && user.User2.Id == id).FirstOrDefault();
                     a2 = user1.Friends.Where(user => user.User1.Id == id && user.User2.Id == myId).FirstOrDefault();
 
@@ -107,19 +110,15 @@ namespace Backend.Controllers
                         return (ActionResult)await acceptFollow(id);
                     }
                     var userForFollow = _db.Users.Include(user => user.Friends).Include(user => user.notifications).Where(user => user.Id == id).Single();
-
-                    me.Friends.Add(new Friend
+                    Friend relatie = new Friend
                     {
                         User1 = me,
                         User2 = userForFollow,
                         status = false
-                    });
-                    userForFollow.Friends.Add(new Friend
-                    {
-                        User1 = me,
-                        User2 = userForFollow,
-                        status = false
-                    });
+                    };
+                    _db.Add<Friend>(relatie);
+                    me.Friends.Add(relatie);
+                    userForFollow.Friends.Add(relatie);
                     userForFollow.newNotifications++;
 
                     userForFollow.notifications.Add(new Notification
