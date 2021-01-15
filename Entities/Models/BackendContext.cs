@@ -27,10 +27,14 @@ namespace Backend.Entities
             modelBuilder.Entity<User>()
               .HasMany(b => b.Friends)
               .WithOne();
-           /* modelBuilder.Entity<Friend>()
+            modelBuilder.Entity<Friend>()
               .HasOne(b => b.User1)
-              .WithMany();*/
+              .WithMany();
+            modelBuilder.Entity<Friend>()
+             .HasOne(b => b.User2)
+             .WithMany();
 
+            
         }
 
 

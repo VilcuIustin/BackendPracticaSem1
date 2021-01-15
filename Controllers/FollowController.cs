@@ -110,15 +110,19 @@ namespace Backend.Controllers
                         return (ActionResult)await acceptFollow(id);
                     }
                     var userForFollow = _db.Users.Include(user => user.Friends).Include(user => user.notifications).Where(user => user.Id == id).Single();
-                    Friend relatie = new Friend
+                  
+                    me.Friends.Add(new Friend
                     {
                         User1 = me,
                         User2 = userForFollow,
                         status = false
-                    };
-                    _db.Add<Friend>(relatie);
-                    me.Friends.Add(relatie);
-                    userForFollow.Friends.Add(relatie);
+                    });
+                    userForFollow.Friends.Add(new Friend
+                    {
+                        User1 = me,
+                        User2 = userForFollow,
+                        status = false
+                    });
                     userForFollow.newNotifications++;
 
                     userForFollow.notifications.Add(new Notification
@@ -130,7 +134,7 @@ namespace Backend.Controllers
                     });
 
 
-                    await _db.SaveChangesAsync();
+                     _db.SaveChanges();
                     await sendNotifications(id);
                     return new JsonResult(new { status = "true", message = "Follow request sended" });
                 }
