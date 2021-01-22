@@ -25,10 +25,6 @@ namespace Backend.Entities.Models
         //[ForeignKey("MyPost")]
         [ForeignKey("idPost")]
         public virtual ICollection<PostId> MyPosts { get; set; }
-
-
-
-
-
+       
     }
 }

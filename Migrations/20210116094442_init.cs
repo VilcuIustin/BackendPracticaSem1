@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Backend.Migrations
 {
-    public partial class mig1 : Migration
+    public partial class init : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -114,33 +114,34 @@ namespace Backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Friend",
+                name: "Friends",
                 columns: table => new
                 {
                     id = table.Column<long>(nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    User1id = table.Column<long>(nullable: false),
+                    User1Id = table.Column<long>(nullable: true),
                     User2Id = table.Column<long>(nullable: true),
+                    sended = table.Column<bool>(nullable: false),
                     status = table.Column<bool>(nullable: false),
                     UserId = table.Column<long>(nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Friend", x => x.id);
+                    table.PrimaryKey("PK_Friends", x => x.id);
                     table.ForeignKey(
-                        name: "FK_Friend_Users_User1id",
-                        column: x => x.User1id,
+                        name: "FK_Friends_Users_User1Id",
+                        column: x => x.User1Id,
                         principalTable: "Users",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_Friend_Users_User2Id",
+                        name: "FK_Friends_Users_User2Id",
                         column: x => x.User2Id,
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_Friend_Users_UserId",
+                        name: "FK_Friends_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -156,6 +157,7 @@ namespace Backend.Migrations
                     message = table.Column<string>(nullable: true),
                     idReceiver = table.Column<long>(nullable: false),
                     idSender = table.Column<long>(nullable: false),
+                    NotificationPath = table.Column<string>(nullable: true),
                     status = table.Column<bool>(nullable: false),
                     UserId = table.Column<long>(nullable: true)
                 },
@@ -213,19 +215,18 @@ namespace Backend.Migrations
                 column: "PostId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Friend_User1id",
-                table: "Friend",
-                column: "User1id",
-                unique: true);
+                name: "IX_Friends_User1Id",
+                table: "Friends",
+                column: "User1Id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Friend_User2Id",
-                table: "Friend",
+                name: "IX_Friends_User2Id",
+                table: "Friends",
                 column: "User2Id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Friend_UserId",
-                table: "Friend",
+                name: "IX_Friends_UserId",
+                table: "Friends",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
@@ -265,7 +266,7 @@ namespace Backend.Migrations
                 name: "Comments");
 
             migrationBuilder.DropTable(
-                name: "Friend");
+                name: "Friends");
 
             migrationBuilder.DropTable(
                 name: "Notification");

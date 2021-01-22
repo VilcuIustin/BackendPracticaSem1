@@ -48,6 +48,9 @@ namespace Backend.Controllers
                 try
                 {
                     User user1 = _db.Users.Include(user => user.Friends)
+                        .ThenInclude(user=> user.User1)
+                        .Include(user => user.Friends)
+                        .ThenInclude(user => user.User2)
                       .Where(user => user.Id == myId).Single();
                     User user2 = _db.Users.Include(user => user.Friends)
                         .Where(user => user.Id == id).Single();
@@ -100,14 +103,14 @@ namespace Backend.Controllers
                
                 try
                 {
-                    var me = _db.Users.Include(user => user.Friends).Where(user => user.Id == idUser).Single();
+                    var me = _db.Users.Include(user => user.Friends).ThenInclude(user=> user.User1).Include(user => user.ProfilePic).Where(user => user.Id == idUser).Single();
                     //var follow1 = me.Following.FirstOrDefault(follow => follow.fo == id);
                     var follow2 = me.Friends.FirstOrDefault(follow => follow.User1.Id == id);
                     if (follow2 != null)
                     {
                         return (ActionResult)await acceptFollow(id);
                     }
-                    var userForFollow = _db.Users.Include(user => user.Friends).Include(user => user.notifications).Where(user => user.Id == id).Single();
+                    var userForFollow = _db.Users.Include(user => user.Friends).Include(user => user.notifications).Include(user=> user.ProfilePic).Where(user => user.Id == id).Single();
 
                     me.Friends.Add(new Friend
                     {
@@ -173,8 +176,10 @@ namespace Backend.Controllers
                 try
                 {
                     me = _db.Users.Include(user => user.Friends)
+                        .ThenInclude(user=> user.User1)
                         .Where(user => user.Id == myId).Single();
                     otherusr = _db.Users.Include(user => user.Friends)
+                        .ThenInclude(user => user.User1)
                         .Where(user => user.Id == id).Single();
                 }
                 catch (ArgumentNullException)
@@ -228,8 +233,10 @@ namespace Backend.Controllers
                 try
                 {
                     me = _db.Users.Include(user => user.Friends)
+                        .ThenInclude(user=> user.User1)
                         .Where(user => user.Id == myId).Single();
                     otherusr = _db.Users.Include(user => user.Friends)
+                        .ThenInclude(user => user.User1)
                         .Include(user => user.notifications)
                         .Where(user => user.Id == id).Single();
                 }
@@ -255,8 +262,9 @@ namespace Backend.Controllers
                     _db.SaveChanges();
                     otherusr.notifications.ToList().Insert(0, new Notification
                     {
-                        message = "sended you a follow request",
+                        message = "sended you a friend request",
                         idReceiver = otherusr.Id,
+                        NotificationPath = "profile",
                         idSender = me.Id,
 
                     });
@@ -271,7 +279,7 @@ namespace Backend.Controllers
             return new JsonResult(new { status = "false", message = "token invalid" });
         }
 
-        public async Task sendNotifications(long id)
+        private async Task sendNotifications(long id)
         {
 
             HashSet<string> conections = ConectionMapping.Instance.Find(id);
@@ -285,12 +293,29 @@ namespace Backend.Controllers
             }
         }
 
-        [HttpGet("test")]
-        public async Task<ActionResult> getFriends(long id)
+        [HttpGet("getFriend")]
+        public async Task<ActionResult> getFriends(long id, int pagesize, int pagenumber)
         {
-            var usr=_db.Users.Include(user => user.Friends).ThenInclude(usr=>usr.User1).Where(user => user.Id == id).FirstOrDefault();
-            var test = usr.Friends.Where(user => user.User1.Id != id ).ToList();
-            return new JsonResult(new { mesaj=test });
+            var usr=_db.Users.Include(user => user.Friends).ThenInclude(usr => usr.User1).ThenInclude(user=> user.ProfilePic).Where(user => user.Id == id).FirstOrDefault();
+            if (usr == null)
+            {
+                return new JsonResult(new { status=false, message="user not found"});
+            }
+            var firends = usr.Friends.Where(user => user.User1.Id != id)
+                .OrderBy(user => user.User1.FullName)
+                .Skip(pagesize * (pagenumber-1))
+                .Take(pagesize);
+            List<ProfileModel> profiles = new List<ProfileModel>();
+            profiles = firends.Select(c => new ProfileModel
+            {
+                Id = c.User1.Id,
+                FullName = c.User1.FullName,
+                ImgUrl = "https://localhost:44355/images/" + c.User1.ProfilePic.ImgUrl,
+                friendStatus= FollowType.Friends,
+
+            }).ToList();
+
+            return new JsonResult(new {status= true, profiles=profiles });
 
         }
 

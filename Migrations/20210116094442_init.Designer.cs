@@ -10,8 +10,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Backend.Migrations
 {
     [DbContext(typeof(BackendContext))]
-    [Migration("20210115070901_mig2")]
-    partial class mig2
+    [Migration("20210116094442_init")]
+    partial class init
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -61,7 +61,7 @@ namespace Backend.Migrations
                         .HasColumnType("bigint")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
-                    b.Property<long>("User1id")
+                    b.Property<long?>("User1Id")
                         .HasColumnType("bigint");
 
                     b.Property<long?>("User2Id")
@@ -70,18 +70,21 @@ namespace Backend.Migrations
                     b.Property<long?>("UserId")
                         .HasColumnType("bigint");
 
+                    b.Property<bool>("sended")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("status")
                         .HasColumnType("bit");
 
                     b.HasKey("id");
 
-                    b.HasIndex("User1id");
+                    b.HasIndex("User1Id");
 
                     b.HasIndex("User2Id");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Friend");
+                    b.ToTable("Friends");
                 });
 
             modelBuilder.Entity("Backend.Entities.Models.ImgURL", b =>
@@ -110,6 +113,9 @@ namespace Backend.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<string>("NotificationPath")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<long?>("UserId")
                         .HasColumnType("bigint");
@@ -250,9 +256,7 @@ namespace Backend.Migrations
                 {
                     b.HasOne("Backend.Entities.Models.User", "User1")
                         .WithMany()
-                        .HasForeignKey("User1id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("User1Id");
 
                     b.HasOne("Backend.Entities.Models.User", "User2")
                         .WithMany()

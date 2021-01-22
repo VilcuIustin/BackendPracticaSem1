@@ -754,5 +754,75 @@ namespace Backend.Controllers
         }
 
         #endregion
+
+        #region notification
+
+        [HttpGet("notifications")]
+        public async Task<ActionResult> getNotification(int pageNo, int pagesize)
+        {
+
+            if (HttpContext.User.HasClaim(claim => claim.Type == "Id"))
+            {
+                long id = -1;
+                if (!long.TryParse(HttpContext.User.Claims.First(claim => claim.Type == "Id").Value, out id))
+                {
+                    return new JsonResult(new { status = false, message = "can't get your id" });
+                }
+
+                User me = _db.Users.Include(u => u.notifications).Where(u => u.Id == id).FirstOrDefault();
+                if (me == null)
+                {
+                    return new StatusCodeResult(500);
+                }
+                var notifications= me.notifications.Skip(pageNo * pagesize).Take(pagesize).ToList();
+                List<NotificationPayload> notif = new List<NotificationPayload>();
+                
+                foreach(var notification in notifications)
+                {
+                    if (notification.status)
+                    {
+                        me.newNotifications--;
+                        notification.status = false;
+                    }
+                        
+
+                    var aux = _db.Users.Include(u => u.ProfilePic).Where(u=> u.Id==notification.idSender).FirstOrDefault();
+                    if (aux == null)
+                    {
+                        notif.Add(new NotificationPayload()
+                        {
+                            FullName = "Deleted User",
+                            id = -1,
+                            image= "unknown.jpg",
+                            link = notification.NotificationPath,
+
+                        }) ;
+                    }
+                    else
+                    {
+                        notif.Add(new NotificationPayload()
+                        {
+                            FullName = aux.FullName,
+                            id = aux.Id,
+                            image = aux.ProfilePic.ImgUrl,
+                            link = notification.NotificationPath,
+
+                        });
+                    }
+                }
+                _db.SaveChanges();
+                return new JsonResult(new {status=true, notifications = notif });
+                
+
+            }
+            
+            return BadRequest();
+
+            }
+
+        #endregion
+
+
+
     }
 }

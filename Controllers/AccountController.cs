@@ -3,6 +3,7 @@ using Backend.Entities.Models;
 using Backend.Payloads;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
@@ -167,7 +168,11 @@ namespace Backend.Controllers
                 {
                     return Unauthorized("TOKEN INVALID PARSE ID FAILED");
                 }
-                var user = _db.Users.Find(id);
+                var user = _db.Users.Include(usr => usr.Friends)
+                        .ThenInclude(usr => usr.User1)
+                        .Include(usr => usr.Friends)
+                        .ThenInclude(usr=> usr.User2)
+                    .FirstOrDefault();
                 if (user == null)
                 {
                     return Unauthorized("User Not Found");
@@ -179,9 +184,23 @@ namespace Backend.Controllers
                 }
                 else
                 {
+                    
                     user.FirstName = changename.Firstname;
                     user.LastName = changename.Lastname;
+                    user.FullName = changename.Firstname + " " + changename.Lastname;
                 }
+                await _db.Friends.Where(usr => usr.User1 == user).ForEachAsync(usr =>
+                { usr.User1.FirstName = user.FirstName;
+                    usr.User1.LastName = user.LastName;
+                    usr.User1.FullName = user.FullName;
+                });
+                await _db.Friends.Where(usr => usr.User2 == user).ForEachAsync(usr =>
+                {
+                    usr.User2.FirstName = user.FirstName;
+                    usr.User2.LastName = user.LastName;
+                    usr.User2.FullName = user.FullName;
+                });
+               
                 await _db.SaveChangesAsync();
                 return Ok();
             }
