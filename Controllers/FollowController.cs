@@ -62,7 +62,7 @@ namespace Backend.Controllers
                     a1 = user1.Friends.Where(user => user.User1.Id == id && user.User2.Id == myId).FirstOrDefault();
                     if (a1 != null && a1?.status == false)
                     {
-                        if (a1.sended == true)
+                        if (a1.sent == true)
                         {
                             return FollowType.Pending;
                         }
@@ -117,7 +117,7 @@ namespace Backend.Controllers
                         User1 = userForFollow,
                         User2 = me,
                         status = false,
-                        sended = true,
+                        sent = true,
 
                     }) ;
                     userForFollow.Friends.Add(new Friend
@@ -125,17 +125,17 @@ namespace Backend.Controllers
                         User1 = me,
                         User2 = userForFollow,
                         status = false,
-                        sended = false,
+                        sent = false,
 
                     }) ;
                     userForFollow.newNotifications++;
 
                     userForFollow.notifications.Add(new Notification
                     {
-                        message = "sended you a follow request",
+                        message = "sent you a friend request",
                         idReceiver = userForFollow.Id,
                         idSender = me.Id,
-
+                        NotificationPath = "profile",
                     });
 
 
@@ -259,16 +259,17 @@ namespace Backend.Controllers
                     following.status = true;
                     follower.status = true;
 
-                    _db.SaveChanges();
-                    otherusr.notifications.ToList().Insert(0, new Notification
+                   
+                    otherusr.notifications.Add( new Notification
                     {
-                        message = "sended you a friend request",
+                        message = "accepted your friend request",
                         idReceiver = otherusr.Id,
                         NotificationPath = "profile",
                         idSender = me.Id,
 
                     });
                     otherusr.newNotifications++;
+                    _db.SaveChanges();
                     return new JsonResult(new { status = "true", message = " success" });
                 }
                 catch (Exception)

@@ -424,10 +424,10 @@ namespace Backend.Controllers
                     List<bool> liked = new List<bool>();
                     foreach (var ids in user.MyPosts.Reverse().Skip((pageNumber - 1) * pageSize).Take(pageSize))
                     {
-                        var aux = _db.Posts.Where(post => post.Id == ids.postId).Include(post => post.Images);
+                        var aux = _db.Posts.Where(post => post.Id == ids.postId).Include(post => post.Images).Include(post=>post.UserLiked);
                         var post= aux.Single();
                         posts.Add(post);
-                        if(aux.Include(post => post.UserLiked).Where(usr => usr.IdUser == idUser).FirstOrDefault()!=null)
+                        if(post.UserLiked.Where(usr => usr.Id == idUser).FirstOrDefault()!=null)
                         {
                             liked.Add(true);
                         }
@@ -439,7 +439,7 @@ namespace Backend.Controllers
                     }
                         
 
-                    return new JsonResult(new { status = "true", posts = posts, nrPost = user.MyPosts.Count() });
+                    return new JsonResult(new { status = "true", posts = posts, nrPost = user.MyPosts.Count(), liked = liked });
 
                 }
 
@@ -448,6 +448,106 @@ namespace Backend.Controllers
             return BadRequest();
 
         }
+
+        [HttpGet("posts")]
+        public async Task<ActionResult> getPostHome(int pagesize, int pagenumber)
+        {
+            var currentUser = HttpContext.User;
+            if (currentUser.HasClaim(claims => claims.Type == "Id"))
+            {
+                long me;
+                long.TryParse(currentUser.Claims.FirstOrDefault(c => c.Type == "Id").Value, out me);
+                User user;
+                try
+                {
+                    user = _db.Users.Where(user => user.Id == me).Include(following => following.Friends).ThenInclude(u=> u.User1).FirstOrDefault();
+                    if (user == null)
+                    {
+                        return new StatusCodeResult(500);
+                    }
+
+                    var lista= _db.Posts.Include(post => post.Images).ToList();
+                    var aux=lista.Where(u => user.Friends.Where(s => s.User1.Id == u.IdUser).Count()!=0);
+                    List<PostModel> posts = new List<PostModel>();
+                    List<bool> liked = new List<bool>();
+
+                    foreach (var ids in aux)
+                    {
+                        var usr = _db.Users.Where(i => i.Id == ids.IdUser).Include(i=> i.ProfilePic).FirstOrDefault();
+                        posts.Add(new PostModel
+                        {
+                            Text = ids.Text,
+                            DTPost = ids.DTPost,
+                            fullname = usr.FullName,
+                            profilePic = usr.ProfilePic.ImgUrl,
+                            Images = ids.Images,
+                            NrLikes = ids.NrLikes,
+                            nrComm = ids.nrComm,
+                            id = ids.Id,
+                            idUser = ids.Id,
+
+                        }) ;
+                        if (ids.UserLiked.Where(usr => usr.Id == me).FirstOrDefault() != null)
+                        {
+                            liked.Add(true);
+                        }
+                        else
+                        {
+                            liked.Add(false);
+                        }
+
+                    }
+
+                    return new JsonResult(new { status = true, posts = posts.Skip(pagesize*pagenumber).Take(pagesize), liked = liked.Skip(pagesize * pagenumber).Take(pagesize) });
+
+                }
+                catch (Exception ex)
+                {
+                    return new JsonResult(new { status = false, message = ex.Message });
+
+                }
+            }
+            return new StatusCodeResult(500);
+        }
+
+        public bool areFriendsYesNo(long id1, long id2)
+        {
+            if (id1 == id2)
+            {
+                return true;
+            }
+            try
+            {
+                User user1 = _db.Users.Include(user => user.Friends).ThenInclude(user => user.User1)
+                  .Where(user => user.Id == id1).FirstOrDefault();
+                User user2 = _db.Users.Include(user => user.Friends)
+                    .Where(user => user.Id == id2).FirstOrDefault();
+
+                Friend? a1 = null;
+
+                a1 = user1.Friends.Where(user => user.User1.Id == id2 && user.User2.Id == id1).FirstOrDefault();
+                if (a1 != null && a1?.status == false)
+                {
+                    if (a1.sent == true)
+                    {
+                        return false;
+                    }
+                    else
+                        return false;
+                }
+                if (a1 != null && a1?.status == true)
+                {
+                    return true;
+                }
+                return false;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+
 
         [HttpPatch("like")]
         public async Task<ActionResult> Like([FromBody]IdPayload idPost)
@@ -496,8 +596,7 @@ namespace Backend.Controllers
             return new JsonResult(new { status = false, message = "bad token" });
 
         }
-
-
+       
 
         public async Task<Enums.FollowType> areFriends(long id1, long id2)
         {
@@ -507,18 +606,17 @@ namespace Backend.Controllers
             }
             try
             {
-                User user1 = _db.Users.Include(user => user.Friends)
-                  .Where(user => user.Id == id1).Single();
+                User user1 = _db.Users.Include(user => user.Friends).ThenInclude(user=> user.User1)
+                  .Where(user => user.Id == id1).FirstOrDefault();
                 User user2 = _db.Users.Include(user => user.Friends)
-                    .Where(user => user.Id == id2).Single();
+                    .Where(user => user.Id == id2).FirstOrDefault();
                 
                 Friend? a1 = null;
-
-             
+                
                 a1 = user1.Friends.Where(user => user.User1.Id == id2 && user.User2.Id == id1).FirstOrDefault();
                 if(a1!=null && a1?.status==false )
                 {
-                    if (a1.sended == true)
+                    if (a1.sent == true)
                     {
                         return FollowType.Pending;
                     }
@@ -529,18 +627,12 @@ namespace Backend.Controllers
                 {
                     return FollowType.Friends;
                 }
-
                  return FollowType.NotFriends;
-
             }
             catch (Exception)
             {
-
                 return FollowType.UserNotFound;
             }
-
-
-
         }
 
         #endregion
@@ -774,7 +866,7 @@ namespace Backend.Controllers
                 {
                     return new StatusCodeResult(500);
                 }
-                var notifications= me.notifications.Skip(pageNo * pagesize).Take(pagesize).ToList();
+                var notifications= me.notifications.Reverse().Skip(pageNo * pagesize).Take(pagesize).ToList();
                 List<NotificationPayload> notif = new List<NotificationPayload>();
                 
                 foreach(var notification in notifications)
@@ -795,7 +887,7 @@ namespace Backend.Controllers
                             id = -1,
                             image= "unknown.jpg",
                             link = notification.NotificationPath,
-
+                            message = notification.message,
                         }) ;
                     }
                     else
@@ -806,6 +898,7 @@ namespace Backend.Controllers
                             id = aux.Id,
                             image = aux.ProfilePic.ImgUrl,
                             link = notification.NotificationPath,
+                            message = notification.message,
 
                         });
                     }

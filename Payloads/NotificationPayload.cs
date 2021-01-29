@@ -9,6 +9,7 @@ namespace Backend.Payloads
     {
         public string FullName { get; set; }
         public string image { get; set; }
+        public string message { get; set; }
         public string link { get; set; }
         public long id { get; set; }
     }
