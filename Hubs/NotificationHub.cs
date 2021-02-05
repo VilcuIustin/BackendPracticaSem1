@@ -64,5 +64,7 @@ namespace Backend.Hubs
             await Clients.All.SendAsync("NotificationReceived", me.newNotifications);
         }
 
+       
+
     }
 }

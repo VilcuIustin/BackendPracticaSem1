@@ -15,7 +15,7 @@ namespace Backend.Entities.Models
         public ICollection<ImgURL>? Images { get; set; }
         public DateTime DTPost { get; set; }
         public int NrLikes { get; set; } //de adaugat  lista cu persoanele care au dat likeuri
-        public ICollection<User> UserLiked { get; set; }
+        public ICollection<UserId> UserLiked { get; set; }
         public virtual ICollection<Comment> PostComment { get; set; }
         public long nrComm { get; set; }
 

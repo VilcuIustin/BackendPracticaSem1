@@ -214,9 +214,6 @@ namespace Backend.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<long?>("PostId")
-                        .HasColumnType("bigint");
-
                     b.Property<long?>("ProfilePicId")
                         .HasColumnType("bigint");
 
@@ -228,11 +225,29 @@ namespace Backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PostId");
-
                     b.HasIndex("ProfilePicId");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Backend.Entities.Models.UserId", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<long>("postId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("userId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("postId");
+
+                    b.ToTable("UserId");
                 });
 
             modelBuilder.Entity("Backend.Entities.Models.Comment", b =>
@@ -294,13 +309,18 @@ namespace Backend.Migrations
 
             modelBuilder.Entity("Backend.Entities.Models.User", b =>
                 {
-                    b.HasOne("Backend.Entities.Models.Post", null)
-                        .WithMany("UserLiked")
-                        .HasForeignKey("PostId");
-
                     b.HasOne("Backend.Entities.Models.ImgURL", "ProfilePic")
                         .WithMany()
                         .HasForeignKey("ProfilePicId");
+                });
+
+            modelBuilder.Entity("Backend.Entities.Models.UserId", b =>
+                {
+                    b.HasOne("Backend.Entities.Models.Post", null)
+                        .WithMany("UserLiked")
+                        .HasForeignKey("postId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

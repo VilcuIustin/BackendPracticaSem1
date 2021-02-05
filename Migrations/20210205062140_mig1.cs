@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Backend.Migrations
 {
-    public partial class init : Migration
+    public partial class mig1 : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -42,6 +42,26 @@ namespace Backend.Migrations
                         principalTable: "Posts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserId",
+                columns: table => new
+                {
+                    Id = table.Column<long>(nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    postId = table.Column<long>(nullable: false),
+                    userId = table.Column<long>(nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserId", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserId_Posts_postId",
+                        column: x => x.postId,
+                        principalTable: "Posts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -93,18 +113,11 @@ namespace Backend.Migrations
                     Gender = table.Column<string>(nullable: true),
                     Role = table.Column<string>(nullable: true),
                     ProfilePicId = table.Column<long>(nullable: true),
-                    newNotifications = table.Column<int>(nullable: false),
-                    PostId = table.Column<long>(nullable: true)
+                    newNotifications = table.Column<int>(nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Users", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Users_Posts_PostId",
-                        column: x => x.PostId,
-                        principalTable: "Posts",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Users_ImgURL_ProfilePicId",
                         column: x => x.ProfilePicId,
@@ -121,7 +134,7 @@ namespace Backend.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     User1Id = table.Column<long>(nullable: true),
                     User2Id = table.Column<long>(nullable: true),
-                    sended = table.Column<bool>(nullable: false),
+                    sent = table.Column<bool>(nullable: false),
                     status = table.Column<bool>(nullable: false),
                     UserId = table.Column<long>(nullable: true)
                 },
@@ -250,9 +263,9 @@ namespace Backend.Migrations
                 column: "userId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Users_PostId",
-                table: "Users",
-                column: "PostId");
+                name: "IX_UserId_postId",
+                table: "UserId",
+                column: "postId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_ProfilePicId",
@@ -273,6 +286,9 @@ namespace Backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "PostId");
+
+            migrationBuilder.DropTable(
+                name: "UserId");
 
             migrationBuilder.DropTable(
                 name: "Users");

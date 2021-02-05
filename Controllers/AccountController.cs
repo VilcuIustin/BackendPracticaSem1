@@ -42,7 +42,7 @@ namespace Backend.Controllers
             catch (Exception)
             {
 
-                return new JsonResult(new { status = "false", message = "email format " + registerPayload.Email });
+                return new JsonResult(new { status = false, message = "email format " + registerPayload.Email });
             }
 
 
@@ -53,7 +53,7 @@ namespace Backend.Controllers
 
                 if (existingUserWithMail)
                 {
-                    return new JsonResult(new { status = "false", message = "An account with this email already exists " });
+                    return new JsonResult(new { status = false, message = "An account with this email already exists " });
                 }
                 string link;
                 string gender;
@@ -91,7 +91,7 @@ namespace Backend.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { status = "false", message = "" + ex.Message });
+                return new JsonResult(new { status = false, message = "" + ex.Message });
             }
 
         }
@@ -208,8 +208,51 @@ namespace Backend.Controllers
 
 
         }
+        [HttpPost("changepass")]
+        public async Task<ActionResult> ChangePass(passwordPayload pass)
+        {
+            
+            if (HttpContext.User.HasClaim(claim => claim.Type == "Id"))
+            {
+                long id;
+                if (!long.TryParse(HttpContext.User.Claims.FirstOrDefault(claim => claim.Type == "Id").Value, out id))
+                {
+                    return Unauthorized("TOKEN INVALID PARSE ID FAILED");
+                }
+                var user = _db.Users.Where(u=>u.Id==id).FirstOrDefault();
+                if (user == null)
+                {
+                    return BadRequest("User Not Found");
+                }
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(pass.Password);
+                _db.SaveChanges();
+                return Ok();
+            }
+            return Unauthorized("TOKEN INVALID");
+        }
 
+        [HttpPost("changeemail")]
+        public async Task<ActionResult> changeEmail(EmailPayload email)
+        {
 
+            if (HttpContext.User.HasClaim(claim => claim.Type == "Id"))
+            {
+                long id;
+                if (!long.TryParse(HttpContext.User.Claims.FirstOrDefault(claim => claim.Type == "Id").Value, out id))
+                {
+                    return Unauthorized("TOKEN INVALID PARSE ID FAILED");
+                }
+                var user = _db.Users.Where(u => u.Id == id).FirstOrDefault();
+                if (user == null)
+                {
+                    return BadRequest("User Not Found");
+                }
+                user.Email = email.Email;
+                _db.SaveChanges();
+                return Ok();
+            }
+            return Unauthorized("TOKEN INVALID");
+        }
 
     }
 }

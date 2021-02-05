@@ -1,9 +1,11 @@
 ﻿using Backend.Entities;
 using Backend.Entities.Models;
+using Backend.Hubs;
 using Backend.Payloads;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using nClam;
@@ -23,11 +25,13 @@ namespace Backend.Controllers
     {
         private readonly BackendContext _db;
         private readonly IConfiguration _configuration;
+        private readonly IHubContext<NotificationHub> _notification;
 
-        public UserController(BackendContext db, IConfiguration configuration)
+        public UserController(BackendContext db, IConfiguration configuration, IHubContext<NotificationHub> notification)
         {
             _db = db;
             _configuration = configuration;
+            _notification = notification;
         }
 
         [HttpGet("getName/{id}")]
@@ -400,7 +404,7 @@ namespace Backend.Controllers
                         Post p = po.Single();
                         posts.Add(p);
                         
-                        if ((p.UserLiked.Where(usr=> usr.Id== idUser).FirstOrDefault() ) != null)
+                        if ((p.UserLiked.Where(usr=> usr.userId == idUser ).FirstOrDefault() ) != null)
                         {
                             liked.Add(true);
                         }
@@ -427,7 +431,7 @@ namespace Backend.Controllers
                         var aux = _db.Posts.Where(post => post.Id == ids.postId).Include(post => post.Images).Include(post=>post.UserLiked);
                         var post= aux.Single();
                         posts.Add(post);
-                        if(post.UserLiked.Where(usr => usr.Id == idUser).FirstOrDefault()!=null)
+                        if(post.UserLiked.Where(usr => usr.userId == idUser).FirstOrDefault()!=null)
                         {
                             liked.Add(true);
                         }
@@ -449,6 +453,58 @@ namespace Backend.Controllers
 
         }
 
+
+        [HttpGet("Oneposts")]
+        public async Task<ActionResult> getPost(long id)
+        {
+            var currentUser = HttpContext.User;
+            if (currentUser.HasClaim(claims => claims.Type == "Id"))
+            {
+                long me;
+                long.TryParse(currentUser.Claims.FirstOrDefault(c => c.Type == "Id").Value, out me);
+                User user;       
+                    user = _db.Users.Where(user => user.Id == me).Include(following => following.Friends).ThenInclude(u => u.User1).FirstOrDefault();
+                    if (user == null)
+                    {
+                        return new StatusCodeResult(500);
+                    }
+                    Post post = _db.Posts.Include(p => p.Images).Include(p=>p.UserLiked).FirstOrDefault(p => p.Id == id);
+                    if (post == null)
+                    {
+                        return new JsonResult(new { status = false, message = "post not found" });
+                    }
+                    var friend = areFriendsYesNo(me, post.IdUser);
+                    if (friend == false)
+                    {
+                        return new JsonResult(new { status = false, message = "this post is private" });
+                    }
+                    var usr = _db.Users.Where(i => i.Id == post.IdUser).Include(i => i.ProfilePic).FirstOrDefault();
+                    var postmodel=(new PostModel
+                    {
+                        Text = post.Text,
+                        DTPost = post.DTPost,
+                        fullname = usr.FullName,
+                        profilePic = usr.ProfilePic.ImgUrl,
+                        Images = post.Images,
+                        NrLikes = post.NrLikes,
+                        nrComm = post.nrComm,
+                        id = post.Id,
+                        idUser = post.Id,
+
+                    });
+                var liked = false;
+                if (post.UserLiked.Where(usr => usr.userId == me).FirstOrDefault() != null)
+                {
+                    liked = true;
+                }
+             
+                return new JsonResult(new {status=true, post=postmodel,like=liked});
+            }
+            return new StatusCodeResult(500);
+        }
+
+
+
         [HttpGet("posts")]
         public async Task<ActionResult> getPostHome(int pagesize, int pagenumber)
         {
@@ -466,7 +522,7 @@ namespace Backend.Controllers
                         return new StatusCodeResult(500);
                     }
 
-                    var lista= _db.Posts.Include(post => post.Images).ToList();
+                    var lista= _db.Posts.Include(post => post.Images).Include(u=>u.UserLiked).ToList();
                     var aux=lista.Where(u => user.Friends.Where(s => s.User1.Id == u.IdUser).Count()!=0);
                     List<PostModel> posts = new List<PostModel>();
                     List<bool> liked = new List<bool>();
@@ -484,10 +540,10 @@ namespace Backend.Controllers
                             NrLikes = ids.NrLikes,
                             nrComm = ids.nrComm,
                             id = ids.Id,
-                            idUser = ids.Id,
+                            idUser = ids.IdUser,
 
                         }) ;
-                        if (ids.UserLiked.Where(usr => usr.Id == me).FirstOrDefault() != null)
+                        if (ids.UserLiked.Where(usr => usr.userId == me).FirstOrDefault() != null)
                         {
                             liked.Add(true);
                         }
@@ -559,7 +615,7 @@ namespace Backend.Controllers
                 {
                     return new JsonResult(new { status = false, message = "Can't parse id" });
                 }
-                var userPost = _db.Posts.Where(post => post.Id == idPost.id).Include(post => post.UserLiked).FirstOrDefault();
+                var userPost = _db.Posts.Include(post => post.UserLiked).Where(post => post.Id == idPost.id).FirstOrDefault();
                 if (userPost == null)
                 {
                     return new JsonResult(new { status = false, message = "Can't find this post" });
@@ -576,27 +632,55 @@ namespace Backend.Controllers
                         return new JsonResult(new { status = false, message = "you can't add a like to a post that you can't see it" });
                     case FollowType.Friends:
                     case FollowType.Same:
-                        var userFound = userPost.UserLiked.Where(user => user.Id == id).SingleOrDefault();
-                        var me = _db.Users.Where(usr => usr.Id == id).SingleOrDefault();
+                        var userFound = userPost.UserLiked.Where(user => user.userId == id).SingleOrDefault();
+                        var me = _db.Users.Include(post=>post.MyPosts).Where(usr => usr.Id == id).SingleOrDefault();
                         if (userFound == null)
                         {
-                            userPost.UserLiked.Add(me);
-                            userPost.NrLikes++;
+                            userPost.UserLiked.Add(new UserId { postId=userPost.Id, userId=me.Id });
+                            userPost.NrLikes= userPost.UserLiked.Count();
+                          
+                            me = _db.Users.Include(u=>u.notifications).Where(usr => usr.Id == userPost.IdUser).SingleOrDefault();
+                            me.notifications.Add(new Notification
+                                {
+                                message = "Liked your post",
+                                idReceiver = id,
+                                NotificationPath = "post/"+ userPost.Id,
+                                idSender = me.Id,
+
+                            });
+                            me.newNotifications++;
+                            sendNotifications(me.Id, me.newNotifications);
                         }
                         else
                         {
-                            userPost.UserLiked.Remove(me);
-                            userPost.NrLikes--;
+
+                            userPost.UserLiked.Remove(userFound);
+                            userPost.NrLikes= userPost.UserLiked.Count();
+                           
                         }
                         break;
                 }
                 _db.SaveChanges();
-                return Ok();
+                var nush= _db.Posts.Include(post => post.UserLiked).Where(post => post.Id == idPost.id).FirstOrDefault();
+                return Ok(nush);
             }
             return new JsonResult(new { status = false, message = "bad token" });
 
         }
-       
+
+        public async Task sendNotifications(long id, long noNotifications)
+        {
+
+            HashSet<string> conections = ConectionMapping.Instance.Find(id);
+            if (conections == null)
+            {
+                return;
+            }
+            foreach (string conn in conections)
+            {
+                await _notification.Clients.Client(conn).SendAsync("NewNotificationReceived", noNotifications);
+            }
+        }
 
         public async Task<Enums.FollowType> areFriends(long id1, long id2)
         {
@@ -642,7 +726,7 @@ namespace Backend.Controllers
         {
             if (payload.Image == null && payload.Message == null)
             {
-                return new JsonResult(new { status = false, message = " you can't add a comment that is empty" });
+                return new JsonResult(new { status = false, message = "you can't add a comment that is empty" });
             }
             var userContext = HttpContext.User;
             if (userContext.HasClaim(claim => claim.Type == "Id"))
@@ -869,16 +953,15 @@ namespace Backend.Controllers
                 var notifications= me.notifications.Reverse().Skip(pageNo * pagesize).Take(pagesize).ToList();
                 List<NotificationPayload> notif = new List<NotificationPayload>();
                 
-                foreach(var notification in notifications)
+                foreach (var notification in notifications)
                 {
-                    if (notification.status)
+                    if (!notification.status)
                     {
                         me.newNotifications--;
-                        notification.status = false;
+                        notification.status =true;
                     }
-                        
-
-                    var aux = _db.Users.Include(u => u.ProfilePic).Where(u=> u.Id==notification.idSender).FirstOrDefault();
+                  
+                 var aux = _db.Users.Include(u => u.ProfilePic).Where(u=> u.Id==notification.idSender).FirstOrDefault();
                     if (aux == null)
                     {
                         notif.Add(new NotificationPayload()
@@ -904,7 +987,7 @@ namespace Backend.Controllers
                     }
                 }
                 _db.SaveChanges();
-                return new JsonResult(new {status=true, notifications = notif });
+                return new JsonResult(new {status=true, notifications = notif, newNotifications= me.newNotifications });
                 
 
             }

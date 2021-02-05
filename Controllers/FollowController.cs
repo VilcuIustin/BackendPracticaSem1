@@ -140,7 +140,7 @@ namespace Backend.Controllers
 
 
                      _db.SaveChanges();
-                    await sendNotifications(id);
+                    await sendNotifications(id, userForFollow.newNotifications);
                     return new JsonResult(new { status = "true", message = "Follow request sended" });
                 }
                 catch (InvalidOperationException)
@@ -280,7 +280,7 @@ namespace Backend.Controllers
             return new JsonResult(new { status = "false", message = "token invalid" });
         }
 
-        private async Task sendNotifications(long id)
+        private async Task sendNotifications(long id, long noNotification)
         {
 
             HashSet<string> conections = ConectionMapping.Instance.Find(id);
@@ -290,7 +290,7 @@ namespace Backend.Controllers
             }
             foreach (string conn in conections)
             {
-                await _notification.Clients.Client(conn).SendAsync("NewNotificationReceived");
+                await _notification.Clients.Client(conn).SendAsync("NewNotificationReceived",noNotification);
             }
         }
 
