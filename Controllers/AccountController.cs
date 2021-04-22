@@ -208,6 +208,7 @@ namespace Backend.Controllers
 
 
         }
+        [Authorize]
         [HttpPost("changepass")]
         public async Task<ActionResult> ChangePass(passwordPayload pass)
         {
@@ -230,7 +231,7 @@ namespace Backend.Controllers
             }
             return Unauthorized("TOKEN INVALID");
         }
-
+        [Authorize]
         [HttpPost("changeemail")]
         public async Task<ActionResult> changeEmail(EmailPayload email)
         {
